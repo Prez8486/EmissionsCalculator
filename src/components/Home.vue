@@ -2,7 +2,7 @@
   <div class="container">
     <h1>Transport Emissions Tracker</h1>
     <router-link to="/select-mode" class="btn">Add New Trip</router-link>
-    <router-link to="/history" class="btn">View History</router-link>
+    <router-link to="/history" class="btn">View Trip History</router-link>
   </div>
 </template>
 
