@@ -6,7 +6,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/cos30020/s103617694/dist',
+  //base: '/cos30020/s103617694/EmissionsCalculator',
   plugins: [
     vue(),
     vueDevTools(),
