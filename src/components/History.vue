@@ -52,7 +52,7 @@
             </template>
           </td>
           <td>{{ r.emission }}</td>
-          <td><button @click="openDetails(r)">View</button></td>
+          <td><button @click="openDetails(r)">Compare</button></td>
         </tr>
         <tr>
           <td colspan="3" style="text-align:right;"><strong>Total Emissions</strong></td>
