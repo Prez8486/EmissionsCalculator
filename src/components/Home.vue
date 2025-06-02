@@ -62,123 +62,138 @@
 </template>
 
 <script>
-import { Bar, Line } from 'vue-chartjs';
-import {
-  Chart as ChartJS,
-  Title,
-  Tooltip,
-  Legend,
-  BarElement,
-  LineElement,
-  PointElement,
-  CategoryScale,
-  LinearScale,
-  TimeScale
-} from 'chart.js';
-import 'chartjs-adapter-date-fns';
-import ChartDataLabels from 'chartjs-plugin-datalabels';
+  import { Bar, Line } from 'vue-chartjs';
+  import {
+    Chart as ChartJS,
+    Title,
+    Tooltip,
+    Legend,
+    BarElement,
+    LineElement,
+    PointElement,
+    CategoryScale,
+    LinearScale,
+    TimeScale
+  } from 'chart.js';
+  import 'chartjs-adapter-date-fns';
+  import ChartDataLabels from 'chartjs-plugin-datalabels';
 
-ChartJS.register(
-  Title,
-  Tooltip,
-  Legend,
-  BarElement,
-  LineElement,
-  PointElement,
-  CategoryScale,
-  LinearScale,
-  ChartDataLabels,
-  TimeScale
-);
+  ChartJS.register(
+    Title,
+    Tooltip,
+    Legend,
+    BarElement,
+    LineElement,
+    PointElement,
+    CategoryScale,
+    LinearScale,
+    ChartDataLabels,
+    TimeScale
+  );
 
-export default {
-  components: {
-    BarChart: Bar,
-    LineChart: Line
-  },
-  data() {
-    return {
-      records: [],
-      selected: null,
-      filter: {
-        mode: '',
-        startDate: '',
-        endDate: ''
+  export default {
+    components: {
+      BarChart: Bar,
+      LineChart: Line
+    },
+    data() {
+      return {
+        records: [],
+        selected: null,
+        filter: {
+          mode: '',
+          startDate: '',
+          endDate: ''
+        }
+      };
+    },
+    computed: {
+      filteredRecords() {
+        return this.records.filter(r => {
+          const matchesMode = !this.filter.mode || r.transportMode.toLowerCase() === this.filter.mode.toLowerCase();
+          const date = new Date(r.date);
+          const start = this.filter.startDate ? new Date(this.filter.startDate) : null;
+          const end = this.filter.endDate ? new Date(this.filter.endDate) : null;
+          const matchesStart = !start || date >= start;
+          const matchesEnd = !end || date <= end;
+          return matchesMode && matchesStart && matchesEnd;
+        });
+      },
+      totalEmissions() {
+        return this.filteredRecords.reduce((sum, r) => sum + parseFloat(r.emissionKg || r.emission) / 1000, 0);
+      },
+      mostCommonMode() {
+        const counts = this.filteredRecords.reduce((acc, r) => {
+          const mode = r.transportMode || r.mode;
+          acc[mode] = (acc[mode] || 0) + 1;
+          return acc;
+        }, {});
+        return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+      },
+      uniqueTripTypes() {
+        return [...new Set(this.filteredRecords.map(r => r.transportMode || r.mode))];
+      },
+      chartLabels() {
+        return this.uniqueTripTypes;
+      },
+      chartData() {
+        const modeSums = {};
+        this.filteredRecords.forEach(r => {
+          const mode = r.transportMode || r.mode;
+          modeSums[mode] = (modeSums[mode] || 0) + parseFloat(r.emissionKg || r.emission) / 1000;
+        });
+        return {
+          labels: this.chartLabels,
+          datasets: [
+            {
+              label: 'Emissions by Transport Type (tonnes)',
+              data: this.chartLabels.map(mode => modeSums[mode] || 0),
+              backgroundColor: '#42A5F5'
+            }
+          ]
+        };
+      },
+      lineChartData() {
+        const emissionsByDay = {};
+        this.filteredRecords.forEach(r => {
+          const date = new Date(r.date);
+          if (isNaN(date)) return;
+          const day = date.toISOString().split('T')[0];
+          emissionsByDay[day] = (emissionsByDay[day] || 0) + parseFloat(r.emissionKg || r.emission) / 1000;
+        });
+        const sortedDays = Object.keys(emissionsByDay).sort((a, b) => new Date(a) - new Date(b));
+        return {
+          labels: sortedDays.map(day => new Date(day)),
+          datasets: [
+            {
+              label: 'Daily Emissions (tonnes)',
+              data: sortedDays.map(day => parseFloat(emissionsByDay[day].toFixed(4))),
+              fill: false,
+              borderColor: '#FF6384',
+              backgroundColor: '#FF6384',
+              tension: 0.3,
+              pointRadius: 5,
+              pointHoverRadius: 7
+            }
+          ]
+        };
       }
-    };
-  },
-  computed: {
-    filteredRecords() {
-      return this.records.filter(r => {
-        const matchesMode = !this.filter.mode || r.mode === this.filter.mode;
-        const date = new Date(Date.parse(r.timestamp));
-        const start = this.filter.startDate ? new Date(this.filter.startDate) : null;
-        const end = this.filter.endDate ? new Date(this.filter.endDate) : null;
-        const matchesStart = !start || date >= start;
-        const matchesEnd = !end || date <= end;
-        return matchesMode && matchesStart && matchesEnd;
+    },
+    async mounted() {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:5000/api/emissions/history', {
+          headers: {
+            Authorization: `Bearer ${ token }`
+        }
       });
-    },
-    totalEmissions() {
-      return this.filteredRecords.reduce((sum, r) => sum + parseFloat(r.emission), 0);
-    },
-    mostCommonMode() {
-      const counts = this.filteredRecords.reduce((acc, r) => {
-        acc[r.mode] = (acc[r.mode] || 0) + 1;
-        return acc;
-      }, {});
-      return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
-    },
-    uniqueTripTypes() {
-      return [...new Set(this.filteredRecords.map(r => r.mode))];
-    },
-    chartLabels() {
-      return this.uniqueTripTypes;
-    },
-    chartData() {
-      const modeSums = {};
-      this.filteredRecords.forEach(r => {
-        modeSums[r.mode] = (modeSums[r.mode] || 0) + parseFloat(r.emission);
-      });
-      return {
-        labels: this.chartLabels,
-        datasets: [
-          {
-            label: 'Emissions by Transport Type (tonnes)',
-            data: this.chartLabels.map(mode => modeSums[mode] || 0),
-            backgroundColor: '#42A5F5'
-          }
-        ]
-      };
-    },
-    lineChartData() {
-      const emissionsByDay = {};
-      this.filteredRecords.forEach(r => {
-        const date = new Date(Date.parse(r.timestamp));
-        if (isNaN(date)) return;
-        const day = date.toISOString().split('T')[0];
-        emissionsByDay[day] = (emissionsByDay[day] || 0) + parseFloat(r.emission);
-      });
-      const sortedDays = Object.keys(emissionsByDay).sort((a, b) => new Date(a) - new Date(b));
-      return {
-        labels: sortedDays.map(day => new Date(day)),
-        datasets: [
-          {
-            label: 'Daily Emissions (tonnes)',
-            data: sortedDays.map(day => parseFloat(emissionsByDay[day].toFixed(4))),
-            fill: false,
-            borderColor: '#FF6384',
-            backgroundColor: '#FF6384',
-            tension: 0.3,
-            pointRadius: 5,
-            pointHoverRadius: 7
-          }
-        ]
-      };
-    }
-  },
-  mounted() {
-    this.records = JSON.parse(localStorage.getItem('emissionsRecords')) || [];
+    const data = await res.json();
+    if(data.records) {
+    this.records = data.records;
+  }
+    } catch (err) {
+    console.error('Failed to fetch records:', err);
+  }
   }
 };
 </script>

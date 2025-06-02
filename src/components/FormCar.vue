@@ -122,26 +122,50 @@
         this.emissionPerYear = emissionPerYear;
       },
       save() {
-        const record = {
-          mode: 'Car',
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert("You must be logged in to save emissions.");
+          this.$router.push('/login');
+          return;
+        }
+
+        const payload = {
+          transportMode: "car",
+          distanceKm: this.km,
           brand: this.brand,
           fuel: this.fuel,
-          distance: this.km,
-          trips: this.trips,
           extraLoad: this.extraLoadType,
-          emission: this.emissionPerTrip.toFixed(3),
-          timestamp: new Date().toISOString()
+          trips: this.trips
         };
-        const records = JSON.parse(localStorage.getItem('emissionsRecords')) || [];
-        records.push(record);
-        localStorage.setItem('emissionsRecords', JSON.stringify(records));
-        alert("Trip saved (per-trip emission stored)!");
-        this.$router.push('/');
-      }
+
+        fetch("http://localhost:5000/api/emissions/log", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${ token }`
     },
-    mounted() {
-      this.calculateEmission();
-    }
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+      .then(data => {
+        if (data.message) {
+          alert("Trip saved to backend!");
+          this.$router.push('/home');
+        } else {
+          alert("Failed to save: " + data.error);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Error saving emission log.");
+      });
+  }
+  
+
+    },
+  mounted() {
+    this.calculateEmission();
+  }
   };
 </script>
 

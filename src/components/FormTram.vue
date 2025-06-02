@@ -12,7 +12,9 @@
     </div>
   </div>
 </template>
-<script>export default {
+
+<script>
+  export default {
     data() {
       return { km: 0, emission: null };
     },
@@ -25,23 +27,46 @@
         this.emission = this.km * factor;
       },
       save() {
-        const record = {
-          mode: 'Tram',
-          distance: this.km,
-          emission: this.emission.toFixed(3),
-          timestamp: new Date().toISOString()
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert("You must be logged in to save emissions.");
+          this.$router.push('/login');
+          return;
+        }
+
+        const payload = {
+          transportMode: 'tram',
+          distanceKm: this.km
         };
-        const records = JSON.parse(localStorage.getItem('emissionsRecords')) || [];
-        records.push(record);
-        localStorage.setItem('emissionsRecords', JSON.stringify(records));
-        alert("Tram trip saved!");
-        this.$router.push('/');
-      }
+
+        fetch("http://localhost:5000/api/emissions/log", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${ token }`
+          },
+      body: JSON.stringify(payload)
+    })
+          .then(res => res.json())
+      .then(data => {
+        if (data.message) {
+          alert("Tram trip saved to backend!");
+          this.$router.push('/home');
+        } else {
+          alert("Failed to save: " + data.error);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Error saving emission log.");
+      });
+  }
     },
-    mounted() {
-      this.calculateEmission();
-    }
-  };</script>
+  mounted() {
+    this.calculateEmission();
+  }
+  };
+</script>
 
 <style scoped>
   .form-container {

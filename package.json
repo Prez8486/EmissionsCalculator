@@ -10,6 +10,9 @@
     "lint": "eslint . --fix"
   },
   "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/cli": "^7.2.0",
+    "@capacitor/core": "^7.2.0",
     "bootstrap": "^5.3.6",
     "chart.js": "^4.4.9",
     "chartjs-adapter-date-fns": "^3.0.0",

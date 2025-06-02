@@ -3,11 +3,11 @@
     <label>Filter by Mode:</label>
     <select v-model="filter.mode">
       <option value="">All</option>
-      <option value="Car">🚗 Car</option>
-      <option value="Bus">🚌 Bus</option>
-      <option value="Tram">🚋 Tram</option>
-      <option value="Metro">🚇 Metro</option>
-      <option value="Flight">✈️ Flight</option>
+      <option value="car">🚗 Car</option>
+      <option value="bus">🚌 Bus</option>
+      <option value="tram">🚋 Tram</option>
+      <option value="metro">🚇 Metro</option>
+      <option value="flight">✈ Flight</option>
     </select>
 
     <label>Start Date:</label>
@@ -16,6 +16,7 @@
     <label>End Date:</label>
     <input type="date" v-model="filter.endDate" />
   </div>
+
   <div class="history">
     <h2>Emission History</h2>
     <table v-if="records.length">
@@ -30,17 +31,17 @@
       </thead>
       <tbody>
         <tr v-for="(r, i) in filteredRecords" :key="i">
-          <td>{{ new Date(r.timestamp).toLocaleString() }}</td>
-          <td>{{ r.mode }}</td>
+          <td>{{ r.date ? new Date(r.date).toLocaleString() : 'N/A' }}</td>
+          <td>{{ r.transportMode }}</td>
           <td>
-            <template v-if="r.mode === 'Car'">
+            <template v-if="r.transportMode.toLowerCase() === 'car'">
               Brand: {{ r.brand }}, Fuel: {{ r.fuel }}
               <br />
-              {{ r.trips }} trips × {{ r.distance }} km/trip
+              {{ r.trips }} trips × {{ r.distanceKm }} km/trip
               <br />
               Load: {{ r.extraLoad || 'None' }}
             </template>
-            <template v-else-if="r.mode === 'Flight'">
+            <template v-else-if="r.transportMode.toLowerCase() === 'flight'">
               {{ r.flights }} flights × {{ r.hoursPerFlight }} hrs/flight
               <br />
               Airline: {{ r.airline || 'Generic' }}
@@ -48,11 +49,11 @@
               Class: {{ r.flightClass || 'Economy' }}
             </template>
             <template v-else>
-              {{ r.distance }} km/week
+              {{ r.distanceKm }} km/week
             </template>
           </td>
-          <td>{{ r.emission }}</td>
-          <td><button @click="openDetails(r)">Compare</button></td>
+          <td>{{ r.emissionKg ? (r.emissionKg / 1000).toFixed(3) : '0.000' }}</td>
+          <td><button @click="openDetails(r)">View</button></td>
         </tr>
         <tr>
           <td colspan="3" style="text-align:right;"><strong>Total Emissions</strong></td>
@@ -63,26 +64,32 @@
     </table>
     <p v-else>No history yet.</p>
 
-    <div v-if="selected" class="visualisation">
-      <h3>What If Analysis for Entry on {{ new Date(selected.timestamp).toLocaleString() }}</h3>
-      <p v-if="selected.mode === 'Car'">
-        What if the same distance was traveled by different car brands (fuel: {{ selected.fuel }})?
-      </p>
-      <p v-else>
-        What if the same distance was traveled using different transport modes?
-      </p>
-      <BarChart :data="chartData" :labels="chartLabels" />
-      <button @click="selected = null">Close</button>
+    <div v-if="selected" class="modal">
+      <div class="modal-content">
+        <span class="close" @click="selected = null">&times;</span>
+        <h3>What If Analysis for {{ new Date(selected.date).toLocaleString() }}</h3>
+        <p v-if="selected.transportMode.toLowerCase() === 'car'">
+          What if the same distance was traveled by different car brands (fuel: {{ selected.fuel }})?
+        </p>
+        <p v-else-if="selected.transportMode.toLowerCase() === 'flight'">
+          What if the same flight was taken with different airlines and seat classes?
+        </p>
+        <p v-else>
+          What if the same distance was traveled using different public transport modes?
+        </p>
+        <BarChart v-if="chartData && chartData.labels && chartData.datasets" :data="JSON.parse(JSON.stringify(chartData))" />
+      </div>
     </div>
 
     <div v-if="records.length" class="summary">
-      <h3>Total Emissions: {{ totalEmissions.toFixed(3) }} tonnes CO₂</h3>
+      <h3>Daily Emissions Overview</h3>
       <LineChart :data="lineChartData" />
     </div>
   </div>
 </template>
 
-<script>import { Bar, Line } from 'vue-chartjs';
+<script>
+  import { Bar, Line } from 'vue-chartjs';
   import {
     Chart as ChartJS,
     Title,
@@ -96,7 +103,6 @@
     TimeScale
   } from 'chart.js';
   import 'chartjs-adapter-date-fns';
-  import ChartDataLabels from 'chartjs-plugin-datalabels';
 
   ChartJS.register(
     Title,
@@ -107,15 +113,11 @@
     PointElement,
     CategoryScale,
     LinearScale,
-    ChartDataLabels,
     TimeScale
   );
 
   export default {
-    components: {
-      BarChart: Bar,
-      LineChart: Line
-    },
+    components: { BarChart: Bar, LineChart: Line },
     data() {
       return {
         filter: {
@@ -130,8 +132,8 @@
     computed: {
       filteredRecords() {
         return this.records.filter(r => {
-          const matchesMode = !this.filter.mode || r.mode === this.filter.mode;
-          const date = new Date(Date.parse(r.timestamp));
+          const matchesMode = !this.filter.mode || r.transportMode.toLowerCase() === this.filter.mode;
+          const date = new Date(r.date);
           const start = this.filter.startDate ? new Date(this.filter.startDate) : null;
           const end = this.filter.endDate ? new Date(this.filter.endDate) : null;
           const matchesStart = !start || date >= start;
@@ -139,54 +141,61 @@
           return matchesMode && matchesStart && matchesEnd;
         });
       },
-      chartLabels() {
-        if (!this.selected) return [];
-        if (this.selected.mode === 'Car') return ['Toyota', 'Honda', 'Ford'];
-        if (this.selected.mode === 'Flight') return ['Emirates', 'Air India', 'Qantas', 'Ryanair'];
-        return ['Bus', 'Tram', 'Metro'];
+      totalEmissions() {
+        return this.filteredRecords.reduce((sum, r) => {
+          const e = parseFloat(r.emissionKg) / 1000;
+          return isNaN(e) ? sum : sum + e;
+        }, 0);
+      },
+      lineChartData() {
+        const emissionsByDay = {};
+        this.filteredRecords.forEach(r => {
+          const date = new Date(r.date);
+          if (isNaN(date)) return;
+          const day = date.toISOString().split('T')[0];
+          emissionsByDay[day] = (emissionsByDay[day] || 0) + (parseFloat(r.emissionKg) / 1000);
+        });
+        const sortedDays = Object.keys(emissionsByDay).sort((a, b) => new Date(a) - new Date(b));
+        return {
+          labels: sortedDays.map(day => new Date(day)),
+          datasets: [
+            {
+              label: 'Daily Emissions (tonnes)',
+              data: sortedDays.map(day => emissionsByDay[day]),
+              borderColor: '#FF6384',
+              backgroundColor: '#FF6384',
+              fill: false,
+              tension: 0.3,
+              pointRadius: 5,
+              pointHoverRadius: 7
+            }
+          ]
+        };
       },
       chartData() {
-        if (!this.selected) return [];
-
-        const distance = this.selected.distance || 0;
-        const trips = this.selected.trips || 1;
-
-        if (this.selected.mode === 'Car') {
-          const fuel = this.selected.fuel;
+        if (!this.selected) return null;
+        const r = this.selected;
+        const distance = r.distanceKm || 0;
+        const fuel = "unleaded91";
+        if (r.transportMode.toLowerCase() === 'car') {
+          const fuelEfficiency = { toyota: 7.5, honda: 7.2, ford: 8.5 };
           const emissionFactors = {
-            unleaded91: 2.31,
-            unleaded98: 2.34,
-            e10: 2.12,
-            diesel: 2.68,
-            hybrid: 2.31,
-            lpg: 1.51,
-            electric: 0
-          };
-          const fuelEfficiency = {
-            toyota: 7.5,
-            honda: 7.2,
-            ford: 8.5
+            unleaded91: 2.31, unleaded98: 2.34, e10: 2.12, diesel: 2.68,
+            hybrid: 2.31, lpg: 1.51, electric: 0
           };
           return {
-            labels: this.chartLabels,
+            labels: ['Toyota', 'Honda', 'Ford'],
             datasets: [
               {
-                label: 'Per-trip Emissions (tonnes)',
-                data: this.chartLabels.map(b => {
-                  const f = fuelEfficiency[b.toLowerCase()] || 0;
-                  const e = emissionFactors[fuel] || 0;
-                  return ((f / 100) * distance * e) / 1000;
-                }),
-                backgroundColor: '#42A5F5'
+                label: 'Car Emissions (tonnes)',
+                data: ['toyota', 'honda', 'ford'].map(b => ((fuelEfficiency[b] / 100) * distance * (emissionFactors[fuel] || 0)) / 1000),
+                backgroundColor: ['#42A5F5', '#66BB6A', '#FFA726']
               }
             ]
           };
-        }
-
-        if (this.selected.mode === 'Flight') {
-          const hours = this.selected.hoursPerFlight || 1;
-          const flights = this.selected.flights || 1;
-          const flightClass = this.selected.flightClass || 'economy';
+        } else if (r.transportMode.toLowerCase() === 'flight') {
+          const hours = r.hoursPerFlight || 1;
+          const flights = r.flights || 1;
           const emissionFactors = {
             emirates: 0.10,
             airindia: 0.11,
@@ -198,105 +207,73 @@
             business: 1.5,
             first: 2
           };
-          const multiplier = classMultipliers[flightClass] || 1;
+          const airlineNames = ['emirates', 'airindia', 'qantas', 'ryanair'];
+          const seatClasses = ['economy', 'business', 'first'];
           return {
-            labels: this.chartLabels,
+            labels: airlineNames.map(a => a.charAt(0).toUpperCase() + a.slice(1)),
+            datasets: seatClasses.map((cls, idx) => ({
+              label: cls.charAt(0).toUpperCase() + cls.slice(1),
+              data: airlineNames.map(a => flights * hours * (emissionFactors[a] || 0.09) * (classMultipliers[cls] || 1)),
+              backgroundColor: ['#42A5F5', '#FFCE56', '#FF7043'][idx]
+            }))
+          };
+        } else {
+          const modes = ['Bus', 'Tram', 'Metro'];
+          const factors = { Bus: 0.0001, Tram: 0.00007, Metro: 0.00006 };
+          return {
+            labels: modes,
             datasets: [
               {
-                label: 'Flight Emissions (tonnes)',
-                data: this.chartLabels.map(a => {
-                  const factor = emissionFactors[a.toLowerCase().replace(/ /g, '')] || 0.09;
-                  return flights * hours * factor * multiplier;
-                }),
-                backgroundColor: '#FFCE56'
+                label: 'Weekly Emissions (tonnes)',
+                data: modes.map(m => distance * factors[m]),
+                backgroundColor: '#66BB6A'
               }
             ]
           };
         }
-
-        const factor = {
-          Bus: 0.0001,
-          Tram: 0.00007,
-          Metro: 0.00006
-        };
-
-        return {
-          labels: this.chartLabels,
-          datasets: [
-            {
-              label: 'Weekly Emissions (tonnes)',
-              data: this.chartLabels.map(mode => distance * factor[mode]),
-              backgroundColor: '#66BB6A'
-            }
-          ]
-        };
-      },
-      totalEmissions() {
-        return this.filteredRecords.reduce((sum, r) => sum + parseFloat(r.emission), 0);
-      },
-      lineChartData() {
-        const emissionsByDay = {};
-        this.filteredRecords.forEach(r => {
-          const date = new Date(Date.parse(r.timestamp));
-          if (isNaN(date)) return;
-          const day = date.toISOString().split('T')[0];
-          emissionsByDay[day] = (emissionsByDay[day] || 0) + parseFloat(r.emission);
-        });
-        const sortedDays = Object.keys(emissionsByDay).sort((a, b) => new Date(a) - new Date(b));
-        return {
-          labels: sortedDays.map(day => new Date(day)),
-          datasets: [
-            {
-              label: 'Daily Emissions (tonnes)',
-              data: sortedDays.map(day => parseFloat(emissionsByDay[day].toFixed(4))),
-              fill: false,
-              borderColor: '#FF6384',
-              backgroundColor: '#FF6384',
-              tension: 0.3,
-              pointRadius: 5,
-              pointHoverRadius: 7
-            }
-          ],
-          options: {
-            plugins: {
-              datalabels: {
-                align: 'top',
-                anchor: 'end',
-                formatter: value => value.toFixed(2),
-                color: '#333',
-                font: {
-                  weight: 'bold'
-                }
-              }
-            }
-          }
-        };
-
       }
     },
     methods: {
       openDetails(record) {
         this.selected = record;
+      },
+      async fetchRecords() {
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch('http://localhost:5000/api/emissions/history', {
+            headers: {
+              Authorization: `Bearer ${ token }`
+            }
+          });
+      const data = await res.json();
+      if(data.records) {
+    this.records = data.records;
+  }
+        } catch (err) {
+    console.error('Failed to fetch records:', err);
+  }
       }
     },
-    mounted() {
-      this.records = JSON.parse(localStorage.getItem('emissionsRecords')) || [];
-    }
-  };</script>
+  mounted() {
+    this.fetchRecords();
+  }
+  };
+</script>
 
-
-.filters {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
-.filters label {
-  font-weight: bold;
-}
 
 <style scoped>
+  .filters {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+    .filters label {
+      font-weight: bold;
+    }
+
   .history {
     max-width: 1000px;
     margin: 2rem auto;
@@ -321,18 +298,30 @@
     background: #f0f0f0;
   }
 
-  .visualisation {
-    margin-top: 3rem;
-    padding: 2rem;
-    background: #f9f9f9;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
   }
 
-  .summary {
-    margin-top: 4rem;
+  .modal-content {
+    background: white;
     padding: 2rem;
-    background: #e6f7ff;
-    border-radius: 10px;
+    border-radius: 8px;
+    max-width: 700px;
+    width: 100%;
+  }
+
+  .close {
+    float: right;
+    font-size: 1.5rem;
+    cursor: pointer;
   }
 </style>

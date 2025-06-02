@@ -3,9 +3,17 @@
     <header>
       <h1>Transport Emissions Tracker</h1>
       <nav>
-        <router-link to="/">Home</router-link>
-        <router-link to="/select-mode">Add Trip</router-link>
-        <router-link to="/history">History</router-link>
+        <template v-if="isLoggedIn">
+          <router-link to="/home">Home</router-link>
+          <router-link to="/select-mode">Add Trip</router-link>
+          <router-link to="/history">History</router-link>
+          <router-link to="/leaderboard">Leaderboard</router-link>
+          <a href="#" @click.prevent="logout">Logout</a>
+        </template>
+        <template v-else>
+          <router-link to="/login">Login</router-link>
+          <router-link to="/register">Register</router-link>
+        </template>
       </nav>
     </header>
 
@@ -17,7 +25,30 @@
 
 <script>
   export default {
-    name: 'App'
+    name: 'App',
+    data() {
+      return {
+        isLoggedIn: false
+      };
+    },
+    methods: {
+      checkAuth() {
+        this.isLoggedIn = !!localStorage.getItem('token');
+      },
+      logout() {
+        localStorage.removeItem('token');
+        this.isLoggedIn = false;
+        this.$router.push('/login');
+      }
+    },
+    created() {
+      this.checkAuth();
+    },
+    watch: {
+      '$route'() {
+        this.checkAuth();
+      }
+    }
   };
 </script>
 

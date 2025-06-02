@@ -33,7 +33,8 @@
   </div>
 </template>
 
-<script>export default {
+<script>
+  export default {
     data() {
       return {
         flights: 0,
@@ -68,26 +69,52 @@
         this.emission = this.flights * this.hours * emissionPerHour * multiplier;
       },
       save() {
-        const record = {
-          mode: 'Flight',
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert("You must be logged in to save emissions.");
+          this.$router.push('/login');
+          return;
+        }
+
+        const payload = {
+          transportMode: 'flight',
+          distanceKm: this.flights * this.hours * 900, // Approx flight distance
+          emissionKg: this.emission * 1000, // Convert tonnes to kg
           flights: this.flights,
           hoursPerFlight: this.hours,
           airline: this.airline,
           flightClass: this.flightClass,
-          emission: this.emission.toFixed(3),
-          timestamp: new Date().toISOString()
+          date: new Date().toISOString()
         };
-        const records = JSON.parse(localStorage.getItem('emissionsRecords')) || [];
-        records.push(record);
-        localStorage.setItem('emissionsRecords', JSON.stringify(records));
-        alert("Flight trip saved!");
-        this.$router.push('/');
-      }
+
+        fetch("http://localhost:5000/api/emissions/log", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${ token }`
     },
-    mounted() {
-      this.calculateEmission();
-    }
-  };</script>
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+      .then(data => {
+        if (data.message) {
+          alert("Flight trip saved to backend!");
+          this.$router.push('/home');
+        } else {
+          alert("Failed to save: " + data.error);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Error saving emission log.");
+      });
+  }
+    },
+  mounted() {
+    this.calculateEmission();
+  }
+  };
+</script>
 
 <style scoped>
   .form-container {

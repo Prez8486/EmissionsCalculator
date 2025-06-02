@@ -9,6 +9,10 @@
     <PackageJsonScriptsBuild Condition="$(PackageJsonScriptsBuild) == ''">vite build</PackageJsonScriptsBuild>
     <PackageJsonScriptsPreview Condition="$(PackageJsonScriptsPreview) == ''">vite preview</PackageJsonScriptsPreview>
     <PackageJsonScriptsLint Condition="$(PackageJsonScriptsLint) == ''">eslint . --fix</PackageJsonScriptsLint>
+    <PackageJsonDependenciesCapacitorAndroid Condition="$(PackageJsonDependenciesCapacitorAndroid) == ''">^7.2.0</PackageJsonDependenciesCapacitorAndroid>
+    <PackageJsonDependenciesCapacitorCli Condition="$(PackageJsonDependenciesCapacitorCli) == ''">^7.2.0</PackageJsonDependenciesCapacitorCli>
+    <PackageJsonDependenciesCapacitorCore Condition="$(PackageJsonDependenciesCapacitorCore) == ''">^7.2.0</PackageJsonDependenciesCapacitorCore>
+    <PackageJsonDependenciesBootstrap Condition="$(PackageJsonDependenciesBootstrap) == ''">^5.3.6</PackageJsonDependenciesBootstrap>
     <PackageJsonDependenciesChartJs Condition="$(PackageJsonDependenciesChartJs) == ''">^4.4.9</PackageJsonDependenciesChartJs>
     <PackageJsonDependenciesChartjsAdapterDateFns Condition="$(PackageJsonDependenciesChartjsAdapterDateFns) == ''">^3.0.0</PackageJsonDependenciesChartjsAdapterDateFns>
     <PackageJsonDependenciesChartjsPluginDatalabels Condition="$(PackageJsonDependenciesChartjsPluginDatalabels) == ''">^2.2.0</PackageJsonDependenciesChartjsPluginDatalabels>
@@ -20,7 +24,7 @@
     <PackageJsonDevdependenciesEslint Condition="$(PackageJsonDevdependenciesEslint) == ''">^9.22.0</PackageJsonDevdependenciesEslint>
     <PackageJsonDevdependenciesEslintPluginVue Condition="$(PackageJsonDevdependenciesEslintPluginVue) == ''">~10.0.0</PackageJsonDevdependenciesEslintPluginVue>
     <PackageJsonDevdependenciesGlobals Condition="$(PackageJsonDevdependenciesGlobals) == ''">^16.0.0</PackageJsonDevdependenciesGlobals>
-    <PackageJsonDevdependenciesVite Condition="$(PackageJsonDevdependenciesVite) == ''">^6.2.4</PackageJsonDevdependenciesVite>
+    <PackageJsonDevdependenciesVite Condition="$(PackageJsonDevdependenciesVite) == ''">^6.3.4</PackageJsonDevdependenciesVite>
     <PackageJsonDevdependenciesVitePluginVueDevtools Condition="$(PackageJsonDevdependenciesVitePluginVueDevtools) == ''">^7.7.2</PackageJsonDevdependenciesVitePluginVueDevtools>
   </PropertyGroup>
 </Project>
