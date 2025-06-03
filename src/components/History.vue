@@ -7,7 +7,7 @@
       <option value="bus">🚌 Bus</option>
       <option value="tram">🚋 Tram</option>
       <option value="metro">🚇 Metro</option>
-      <option value="flight">✈ Flight</option>
+      <option value="flight">✈️ Flight</option>
     </select>
 
     <label>Start Date:</label>
@@ -149,19 +149,27 @@
       },
       lineChartData() {
         const emissionsByDay = {};
+
         this.filteredRecords.forEach(r => {
           const date = new Date(r.date);
           if (isNaN(date)) return;
           const day = date.toISOString().split('T')[0];
-          emissionsByDay[day] = (emissionsByDay[day] || 0) + (parseFloat(r.emissionKg) / 1000);
+          emissionsByDay[day] = (emissionsByDay[day] || 0) + (parseFloat(r.emissionKg || r.emission) / 1000);
         });
+
         const sortedDays = Object.keys(emissionsByDay).sort((a, b) => new Date(a) - new Date(b));
+
         return {
-          labels: sortedDays.map(day => new Date(day)),
+          labels: sortedDays.map(day =>
+            new Date(day).toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: 'short'
+            })
+          ),
           datasets: [
             {
               label: 'Daily Emissions (tonnes)',
-              data: sortedDays.map(day => emissionsByDay[day]),
+              data: sortedDays.map(day => parseFloat(emissionsByDay[day].toFixed(4))),
               borderColor: '#FF6384',
               backgroundColor: '#FF6384',
               fill: false,
@@ -188,7 +196,7 @@
             datasets: [
               {
                 label: 'Car Emissions (tonnes)',
-                data: ['toyota', 'honda', 'ford'].map(b => ((fuelEfficiency[b] / 100) * distance * (emissionFactors[fuel] || 0)) / 1000),
+                data: ['toyota', 'honda', 'ford'].map(b => (((fuelEfficiency[b] / 100) * distance * (emissionFactors[fuel] || 0)) / 1000).toFixed(4)),
                 backgroundColor: ['#42A5F5', '#66BB6A', '#FFA726']
               }
             ]
@@ -213,7 +221,7 @@
             labels: airlineNames.map(a => a.charAt(0).toUpperCase() + a.slice(1)),
             datasets: seatClasses.map((cls, idx) => ({
               label: cls.charAt(0).toUpperCase() + cls.slice(1),
-              data: airlineNames.map(a => flights * hours * (emissionFactors[a] || 0.09) * (classMultipliers[cls] || 1)),
+              data: airlineNames.map(a => (flights * hours * (emissionFactors[a] || 0.09) * (classMultipliers[cls] || 1)).toFixed(4)),
               backgroundColor: ['#42A5F5', '#FFCE56', '#FF7043'][idx]
             }))
           };
@@ -225,7 +233,7 @@
             datasets: [
               {
                 label: 'Weekly Emissions (tonnes)',
-                data: modes.map(m => distance * factors[m]),
+                data: modes.map(m => (distance * factors[m]).toFixed(4)),
                 backgroundColor: '#66BB6A'
               }
             ]
@@ -240,23 +248,23 @@
       async fetchRecords() {
         try {
           const token = localStorage.getItem('token');
-          const res = await fetch('http://localhost:5000/api/emissions/history', {
+          const res = await fetch('https://emissionscalculatorbackend.onrender.com/api/emissions/history', {
             headers: {
-              Authorization: `Bearer ${ token }`
+              Authorization: `Bearer ${token}`
             }
           });
-      const data = await res.json();
-      if(data.records) {
-    this.records = data.records;
-  }
+          const data = await res.json();
+          if (data.records) {
+            this.records = data.records;
+          }
         } catch (err) {
-    console.error('Failed to fetch records:', err);
-  }
+          console.error('Failed to fetch records:', err);
+        }
       }
     },
-  mounted() {
-    this.fetchRecords();
-  }
+    mounted() {
+      this.fetchRecords();
+    }
   };
 </script>
 

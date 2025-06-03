@@ -87,7 +87,7 @@
           date: new Date().toISOString()
         };
 
-        fetch("http://localhost:5000/api/emissions/log", {
+        fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/log", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

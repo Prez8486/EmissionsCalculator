@@ -3,40 +3,16 @@
     <h1 class="h3 mb-4">Emissions Dashboard</h1>
 
     <div class="row mb-4">
-      <div class="col-md-3 mb-3">
+      <div class="col-md-3 mb-3" v-for="(card, i) in cards" :key="i">
         <div class="card">
           <div class="card-body">
-            <h5 class="card-title">Total Emissions</h5>
-            <p class="card-text display-6">{{ totalEmissions.toFixed(2) }} t</p>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3 mb-3">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Most Common Mode</h5>
-            <p class="card-text h5">{{ mostCommonMode }}</p>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3 mb-3">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Unique Trip Types</h5>
-            <p class="card-text h5">{{ uniqueTripTypes.length }}</p>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3 mb-3">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Total Trips</h5>
-            <p class="card-text h5">{{ filteredRecords.length }}</p>
+            <h5 class="card-title">{{ card.title }}</h5>
+            <p class="card-text h5">{{ card.value }}</p>
           </div>
         </div>
       </div>
     </div>
-
+    <div v-if="isAndroid">Hello</div>
     <div class="row">
       <div class="col-lg-6 mb-4">
         <div class="card">
@@ -55,7 +31,7 @@
         </div>
       </div>
     </div>
-    <!--navigation-->
+
     <router-link to="/select-mode" class="btn">Add New Trip</router-link>
     <router-link to="/history" class="btn">View Trip History</router-link>
   </div>
@@ -87,8 +63,8 @@
     PointElement,
     CategoryScale,
     LinearScale,
-    ChartDataLabels,
-    TimeScale
+    TimeScale,
+    ChartDataLabels
   );
 
   export default {
@@ -99,7 +75,6 @@
     data() {
       return {
         records: [],
-        selected: null,
         filter: {
           mode: '',
           startDate: '',
@@ -120,7 +95,10 @@
         });
       },
       totalEmissions() {
-        return this.filteredRecords.reduce((sum, r) => sum + parseFloat(r.emissionKg || r.emission) / 1000, 0);
+        return this.filteredRecords.reduce((sum, r) => {
+          const val = parseFloat(r.emissionKg || r.emission);
+          return isNaN(val) ? sum : sum + val / 1000;
+        }, 0);
       },
       mostCommonMode() {
         const counts = this.filteredRecords.reduce((acc, r) => {
@@ -147,7 +125,7 @@
           datasets: [
             {
               label: 'Emissions by Transport Type (tonnes)',
-              data: this.chartLabels.map(mode => modeSums[mode] || 0),
+              data: this.chartLabels.map(mode => (modeSums[mode] || 0).toFixed(4)),
               backgroundColor: '#42A5F5'
             }
           ]
@@ -155,22 +133,30 @@
       },
       lineChartData() {
         const emissionsByDay = {};
+
         this.filteredRecords.forEach(r => {
           const date = new Date(r.date);
           if (isNaN(date)) return;
           const day = date.toISOString().split('T')[0];
-          emissionsByDay[day] = (emissionsByDay[day] || 0) + parseFloat(r.emissionKg || r.emission) / 1000;
+          emissionsByDay[day] = (emissionsByDay[day] || 0) + (parseFloat(r.emissionKg || r.emission) / 1000);
         });
+
         const sortedDays = Object.keys(emissionsByDay).sort((a, b) => new Date(a) - new Date(b));
+
         return {
-          labels: sortedDays.map(day => new Date(day)),
+          labels: sortedDays.map(day =>
+            new Date(day).toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: 'short'
+            })
+          ),
           datasets: [
             {
               label: 'Daily Emissions (tonnes)',
               data: sortedDays.map(day => parseFloat(emissionsByDay[day].toFixed(4))),
-              fill: false,
               borderColor: '#FF6384',
               backgroundColor: '#FF6384',
+              fill: false,
               tension: 0.3,
               pointRadius: 5,
               pointHoverRadius: 7
@@ -178,24 +164,35 @@
           ]
         };
       }
+      ,
+      cards() {
+        console.log(this.totalEmissions.toFixed(2));
+        return [
+          { title: 'Total Emissions', value: this.totalEmissions.toFixed(2) + ' t' },
+          { title: 'Most Common Mode', value: this.mostCommonMode },
+          { title: 'Unique Trip Types', value: this.uniqueTripTypes.length },
+          { title: 'Total Trips', value: this.filteredRecords.length }
+        ];
+      }
     },
     async mounted() {
+      this.isAndroid = /Android/i.test(navigator.userAgent);
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5000/api/emissions/history', {
+        const res = await fetch('https://emissionscalculatorbackend.onrender.com/api/emissions/history', {
           headers: {
-            Authorization: `Bearer ${ token }`
+            Authorization: `Bearer ${token}`
+          }
+        });
+        const data = await res.json();
+        if (data.records) {
+          this.records = data.records;
         }
-      });
-    const data = await res.json();
-    if(data.records) {
-    this.records = data.records;
-  }
-    } catch (err) {
-    console.error('Failed to fetch records:', err);
-  }
-  }
-};
+      } catch (err) {
+        console.error('Failed to fetch records:', err);
+      }
+    }
+  };
 </script>
 
 <style scoped>
@@ -207,6 +204,7 @@
   .container {
     text-align: center;
     margin-top: 3rem;
+    padding: 1rem;
   }
 
   .btn {

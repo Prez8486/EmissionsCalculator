@@ -30,7 +30,7 @@
   async mounted() {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/emissions/leaderboard", {
+      const res = await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/leaderboard", {
         headers: {
           Authorization: `Bearer ${token}`
         }

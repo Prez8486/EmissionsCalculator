@@ -10,6 +10,7 @@
       <h3>Emissions Summary</h3>
       <p><strong>This Trip:</strong> {{ emission.toFixed(3) }} tonnes CO₂</p>
       <button @click="save">Save to History</button>
+      
     </div>
   </div>
 </template>
@@ -43,7 +44,7 @@
           distanceKm: this.km
         };
 
-        fetch("http://localhost:5000/api/emissions/log", {
+        fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/log", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
