@@ -111,6 +111,7 @@
     margin: 0;
     font-family: 'Segoe UI', sans-serif;
     background-color: #f3f4f6;
+    overflow-x: hidden;
   }
 
   #app {
@@ -154,12 +155,16 @@
     right: 0;
     background: white;
     display: flex;
-    justify-content: space-around;
+    justify-content: space-evenly;
     align-items: center;
     padding: 8px 0;
     box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
     border-top: 1px solid #e5e7eb;
     z-index: 1000;
+    overflow-x: hidden;
+    max-width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
   }
 
   .nav-item {
@@ -176,6 +181,7 @@
     border: none;
     cursor: pointer;
     font-family: inherit;
+    white-space: nowrap;
   }
 
   .nav-item:hover {
