@@ -5,7 +5,7 @@
       <input v-model="email" type="email" placeholder="Email" required />
       <input v-model="password" type="password" placeholder="Password" required />
       <button type="submit">Login</button>
-      <p class="message">{{ message }}</p>
+      <p class="message" :style="{ color: showToast ? '#28a745' : '#dc3545' }">{{ message }}</p>
     </form>
     <router-link class="link" to="/register">Don't have an account? Register</router-link>
   </div>
@@ -16,8 +16,22 @@
       return {
         email: '',
         password: '',
-        message: ''
+        message: '',
+        showToast: false
       };
+    },
+    mounted(){
+      //show toast if registration successful
+      if (this.$route.query.created === 'true') {
+        this.message = 'Account created!';
+        this.showToast = true;
+
+        setTimeout(() => {
+          this.message = '';
+          this.showToast = false;
+          this.$router.replace({ path: this.$route.path }); // clear the ?created=true
+        }, 5000);
+      }
     },
     methods: {
       async login() {

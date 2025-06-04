@@ -39,7 +39,7 @@
           const data = await res.json();
           if (data.message) {
             this.message = "Registration successful!";
-            this.$router.push('/login');
+            this.$router.push({ path: '/login', query: { created: 'true' } });
           } else {
             this.message = data.error || "Registration failed.";
           }
