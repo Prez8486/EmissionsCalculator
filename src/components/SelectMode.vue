@@ -2,7 +2,7 @@
   <div class="container">
     <h2>Select Transport Mode</h2>
     <div class="transport-grid">
-      <router-link class="btn" to="/form/car">
+      <router-link class="btn" to="/cartrip">
         <i class="fas fa-car icon"></i>
         <span class="desc">Add a car trip</span>
       </router-link>

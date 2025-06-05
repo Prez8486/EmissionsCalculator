@@ -3,7 +3,7 @@
     <h2>Car Emission Calculator</h2>
     <form>
       <label>Distance per Trip (km):</label>
-      <input v-model.number="km" type="number" min="0" />
+      <input v-model.number="km" type="number" min="0" readonly />
 
       <label>Trips per Week:</label>
       <input v-model.number="trips" type="number" min="0" />
@@ -48,7 +48,7 @@
   export default {
     data() {
       return {
-        km: 0,
+        km: parseFloat(localStorage.getItem('carTripDistance')) || 0,
         trips: 1,
         brand: 'toyota',
         fuel: 'unleaded91',
@@ -163,9 +163,10 @@
   
 
     },
-  mounted() {
-    this.calculateEmission();
-  }
+    mounted() {
+      this.calculateEmission();
+      localStorage.removeItem('carTripDistance');
+    }
   };
 </script>
 

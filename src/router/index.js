@@ -10,7 +10,7 @@ import Login from '../components/Login.vue';
 import Register from '../components/Register.vue';
 import History from '../components/History.vue';
 import Leaderboard from '../components/Leaderboard.vue';
-
+import CarTrip from '../components/CarTrip.vue';
 const routes = [
   { path: '/', component: Login },
   { path: '/login', component: Login },
@@ -24,6 +24,7 @@ const routes = [
   { path: '/form/flight', component: FormFlight },
   { path: '/leaderboard', component: Leaderboard },
   { path: '/history', component: History },
+  { path: '/cartrip', component: CarTrip },
 ];
 
 export default createRouter({
