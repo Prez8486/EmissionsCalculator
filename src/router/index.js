@@ -13,7 +13,6 @@ import TripModeSelection from '../components/TripModeSelection.vue';
 import TripTracking from '../components/TripTracking.vue';
 import TripSummary from '../components/TripSummary.vue';
 
-
 const routes = [
   { path: '/', component: Login },
   { path: '/login', component: Login },
@@ -28,7 +27,7 @@ const routes = [
   { path: '/history', component: History },
   { path: '/trip-tracking', name: 'TripTracking', component: TripTracking },
   { path: '/trip-mode-selection', component: TripModeSelection },
-  { path: '/trip-summary', name: 'TripSummary', component: TripSummary.vue}
+  { path: '/trip-summary', name: 'TripSummary', component: TripSummary }
 ];
 
 export default createRouter({

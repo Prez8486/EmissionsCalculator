@@ -30,6 +30,9 @@
 </template>
 
 <script>
+import { Geolocation } from '@capacitor/geolocation';
+import { useLocationStore } from '@/stores/location';
+
 export default {
   data() {
     return {
@@ -75,9 +78,34 @@ export default {
     formatDate(dateStr) {
       const date = new Date(dateStr);
       return isNaN(date) ? 'Invalid Date' : date.toLocaleDateString('en-GB');
+    },
+
+    async checkLocationPermission() {
+      const locationStore = useLocationStore();
+      try {
+        const status = await Geolocation.checkPermissions();
+
+        if (status.location === 'granted') {
+          locationStore.setPermission(true);
+        } else {
+          const result = await Geolocation.requestPermissions();
+          if (result.location === 'granted') {
+            locationStore.setPermission(true);
+          } else {
+            locationStore.setPermission(false);
+            alert('Location permission not granted. Trip tracking features may be limited.');
+          }
+        }
+      } catch (err) {
+        console.error('Error checking location permissions:', err);
+        locationStore.setPermission(false);
+      }
     }
   },
   async mounted() {
+    const locationStore = useLocationStore();
+    await this.checkLocationPermission();
+
     try {
       const token = localStorage.getItem('token');
       const res = await fetch('https://emissionscalculatorbackend.onrender.com/api/emissions/history', {

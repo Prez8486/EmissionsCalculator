@@ -15,11 +15,13 @@
 import { onMounted, ref, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue';
+import { useLocationStore } from '@/stores/location';
 
 const route = useRoute()
 const router = useRouter()
-const transportMode = route.query.mode || 'unknown'
+const locationStore = useLocationStore();
 
+const transportMode = route.query.mode || 'unknown'
 const transportModeLabel = transportMode.charAt(0).toUpperCase() + transportMode.slice(1)
 
 const startTime = Date.now()
@@ -72,40 +74,54 @@ const durationDisplay = computed(() => {
   return `${hr}h ${min}m ${sec}s`
 })
 
+
 onMounted(() => {
+  if (!locationStore.permissionGranted) {
+    alert('❌ Location permission not granted. Cannot track trip.');
+    router.push('/dashboard');
+    return;
+  }
+
+  if (!locationStore.trackingEnabled) {
+    alert('⚠️ Trip tracking is disabled in settings.');
+    router.push('/dashboard');
+    return;
+  }
+
+  // Start tracking
   intervalId = setInterval(() => {
-    duration.value++
-  }, 1000)
+    duration.value++;
+  }, 1000);
 
   watchId = navigator.geolocation.watchPosition(
     pos => {
       const coords = {
         lat: pos.coords.latitude,
         lng: pos.coords.longitude
-      }
+      };
 
       if (lastPosition) {
-        const dist = calculateDistance(lastPosition, coords)
-        totalDistance.value += dist
+        const dist = calculateDistance(lastPosition, coords);
+        totalDistance.value += dist;
       }
 
-      lastPosition = coords
+      lastPosition = coords;
     },
     err => {
-      console.error('Geolocation error:', err)
+      console.error('Geolocation error:', err);
     },
     {
       enableHighAccuracy: true,
       timeout: 10000,
       maximumAge: 1000
     }
-  )
-})
+  );
+});
 
 onBeforeUnmount(() => {
-  navigator.geolocation.clearWatch(watchId)
-  clearInterval(intervalId)
-})
+  navigator.geolocation.clearWatch(watchId);
+  clearInterval(intervalId);
+});
 </script>
 
 <style scoped>

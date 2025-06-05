@@ -54,9 +54,11 @@
             <span class="option-icon">🌙</span>
             <span>Dark Mode (Coming Soon)</span>
           </button>
-          <button class="settings-option" disabled>
+          <button class="settings-option" @click="toggleTracking">
             <span class="option-icon">📍</span>
-            <span>Location Settings (Coming Soon)</span>
+            <span>
+              Location Tracking: {{ locationStore.trackingEnabled ? 'Enabled' : 'Disabled' }}
+            </span>
           </button>
         </div>
       </div>
@@ -70,41 +72,51 @@
 </template>
 
 <script>
-  export default {
-    name: 'App',
-    data() {
-      return {
-        isLoggedIn: false,
-        isAndroid: false,
-        showSettings: false
-      };
+import { useLocationStore } from '@/stores/location';
+
+export default {
+  name: 'App',
+  data() {
+    return {
+      isLoggedIn: false,
+      isAndroid: false,
+      showSettings: false,
+      locationStore: null
+    };
+  },
+  methods: {
+    checkAuth() {
+      this.isLoggedIn = !!localStorage.getItem('token');
     },
-    methods: {
-      checkAuth() {
-        this.isLoggedIn = !!localStorage.getItem('token');
-      },
-      logout() {
-        localStorage.removeItem('token');
-        this.isLoggedIn = false;
-        this.showSettings = false;
-        this.$router.push('/login');
-      }
+    logout() {
+      localStorage.removeItem('token');
+      this.isLoggedIn = false;
+      this.showSettings = false;
+      this.$router.push('/login');
     },
-    created() {
-      this.checkAuth();
-    },
-    mounted() {
-      // Detect Android user agent
-      console.log("Vue App mounted");
-      this.isAndroid = /Android/i.test(navigator.userAgent);
-    },
-    watch: {
-      '$route'() {
-        this.checkAuth();
-        this.showSettings = false; // Close settings when navigating
+    toggleTracking() {
+      if (this.locationStore) {
+        this.locationStore.toggleTracking();
       }
     }
-  };
+  },
+  created() {
+    this.checkAuth();
+    // Initialize the location store
+    this.locationStore = useLocationStore();
+  },
+  mounted() {
+    // Detect Android user agent
+    console.log("Vue App mounted");
+    this.isAndroid = /Android/i.test(navigator.userAgent);
+  },
+  watch: {
+    '$route'() {
+      this.checkAuth();
+      this.showSettings = false; // Close settings when navigating
+    }
+  }
+};
 </script>
 
 <style>
