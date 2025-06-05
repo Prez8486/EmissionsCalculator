@@ -14,6 +14,7 @@
 <script setup>
 import { onMounted, ref, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { computed } from 'vue';
 
 const route = useRoute()
 const router = useRouter()

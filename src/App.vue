@@ -95,6 +95,7 @@
     },
     mounted() {
       // Detect Android user agent
+      console.log("Vue App mounted");
       this.isAndroid = /Android/i.test(navigator.userAgent);
     },
     watch: {
