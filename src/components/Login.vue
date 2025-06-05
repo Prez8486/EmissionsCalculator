@@ -20,6 +20,12 @@
         showToast: false
       };
     },
+
+    computed: {
+      isLoggedIn() {
+        return !!localStorage.getItem('authToken');
+      }
+    },
     mounted(){
       //show toast if registration successful
       if (this.$route.query.created === 'true') {
@@ -42,9 +48,13 @@
             body: JSON.stringify({ email: this.email, password: this.password })
           });
           const data = await res.json();
+          console.log('Login response:', data); // Debug log
           if (data.token) {
-            localStorage.setItem('token', data.token);
+            localStorage.setItem('authToken', data.token);
             this.$router.push('/home');
+
+            const token = localStorage.getItem('authToken')
+            console.log('AUTH TOKEN:', token)
           } else {
             this.message = data.error || "Login failed.";
           }

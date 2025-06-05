@@ -33,6 +33,7 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const selectedMode = ref(null)
+const tripId = ref(null)
 
 const modes = [
   { value: 'car', label: 'Car', icon: '🚗' },
@@ -50,8 +51,73 @@ function goToCarDetails() {
   router.push({ name: 'CarDetails' })
 }
 
-function startTrip() {
-  router.push({ name: 'TripTracking', query: { mode: selectedMode.value } })
+
+async function startTrip() {
+  if (!selectedMode.value) {
+    alert('Please select a transport mode')
+    return
+  }
+
+  const token = localStorage.getItem('authToken')
+  console.log('Token exists:', !!token)
+
+  if (!token) {
+    alert('Please log in first')
+    return
+  }
+
+  try {
+    const body = { transportMode: selectedMode.value }
+
+    if (selectedMode.value === 'car') {
+      body.brand = 'Toyota'
+      body.fuel = 'petrol'
+      body.factor = 2.31
+    }
+
+    console.log('Sending request with body:', body)
+
+    const res = await fetch('https://emissionscalculatorbackend.onrender.com/api/trips/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(body)
+    })
+
+    console.log('Response status:', res.status)
+    console.log('Response ok:', res.ok)
+
+    // Get the response text first to see what the server is actually returning
+    const responseText = await res.text()
+    console.log('Raw response:', responseText)
+
+    if (!res.ok) {
+      // Try to parse as JSON, but handle if it's not valid JSON
+      let errorMessage = 'Failed to start trip'
+      try {
+        const errorData = JSON.parse(responseText)
+        errorMessage = errorData.error || errorMessage
+      } catch (e) {
+        errorMessage = responseText || errorMessage
+      }
+      throw new Error(errorMessage)
+    }
+
+    const data = JSON.parse(responseText)
+    tripId.value = data.tripId
+    localStorage.setItem('currentTripId', tripId.value)
+
+    router.push({
+      name: 'TripTracking',
+      query: { mode: selectedMode.value, tripId: tripId.value }
+    })
+
+  } catch (error) {
+    console.error('Full error:', error)
+    alert('Error starting trip: ' + error.message)
+  }
 }
 </script>
 

@@ -107,7 +107,7 @@ export default {
     await this.checkLocationPermission();
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
       const res = await fetch('https://emissionscalculatorbackend.onrender.com/api/emissions/history', {
         headers: {
           Authorization: `Bearer ${token}`

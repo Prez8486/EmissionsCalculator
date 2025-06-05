@@ -24,6 +24,9 @@ const locationStore = useLocationStore();
 const transportMode = route.query.mode || 'unknown'
 const transportModeLabel = transportMode.charAt(0).toUpperCase() + transportMode.slice(1)
 
+//get the tripID from when the trip was created
+const tripId = route.query.tripId || null
+
 const startTime = Date.now()
 const duration = ref(0)
 const totalDistance = ref(0)
@@ -50,29 +53,64 @@ function calculateDistance(pos1, pos2) {
   return R * c
 }
 
-function stopTrip() {
-  navigator.geolocation.clearWatch(watchId)
-  clearInterval(intervalId)
-
-  const endTime = Date.now()
-  const durationMs = endTime - startTime
-
-  router.push({
-    name: 'TripSummary',
-    query: {
-      mode: transportMode,
-      distanceKm: (totalDistance.value / 1000).toFixed(2),
-      durationSec: Math.floor(durationMs / 1000)
-    }
-  })
-}
-
 const durationDisplay = computed(() => {
   const sec = Math.floor(duration.value % 60)
   const min = Math.floor((duration.value / 60) % 60)
   const hr = Math.floor(duration.value / 3600)
   return `${hr}h ${min}m ${sec}s`
 })
+
+async function stopTrip() {
+  navigator.geolocation.clearWatch(watchId)
+  clearInterval(intervalId)
+
+  const endTime = Date.now()
+  const durationSeconds = Math.floor((endTime - startTime) / 1000)
+  const distanceKm = totalDistance.value / 1000
+
+  if (!tripId) {
+    alert('Trip ID missing. Cannot save trip.')
+    router.push('/trip-mode-selection')
+    return
+  }
+
+  try {
+    const token = localStorage.getItem('authToken')
+
+    const response = await fetch('https://emissionscalculatorbackend.onrender.com/api/trips/end', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        tripId,
+        distanceKm,
+        durationSeconds
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to save trip data')
+    }
+
+    const data = await response.json()
+
+    router.push({
+      name: 'TripSummary',
+      query: {
+        mode: transportMode,
+        distanceKm: distanceKm.toFixed(2),
+        durationSec: durationSeconds,
+        emissionKg: data.trip.emissionKg || 0
+      }
+    })
+  } catch (error) {
+    console.error(error)
+    alert('Error saving trip: ' + error.message)
+  }
+}
+
 
 
 onMounted(() => {

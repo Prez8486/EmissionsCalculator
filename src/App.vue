@@ -86,10 +86,10 @@ export default {
   },
   methods: {
     checkAuth() {
-      this.isLoggedIn = !!localStorage.getItem('token');
+      this.isLoggedIn = !!localStorage.getItem('authToken');
     },
     logout() {
-      localStorage.removeItem('token');
+      localStorage.removeItem('authToken');
       this.isLoggedIn = false;
       this.showSettings = false;
       this.$router.push('/login');

@@ -2,77 +2,93 @@
   <div class="trip-summary">
     <h2>Trip Summary</h2>
 
-    <div class="summary-card">
-      <p><strong>Transport Mode:</strong> {{ transportMode }}</p>
-      <p><strong>Distance:</strong> {{ distanceKm }} km</p>
+    <div v-if="loading" class="loading">Loading trip details...</div>
+
+    <div v-else-if="error" class="error">{{ error }}</div>
+
+    <div v-else class="summary-card">
+      <p><strong>Transport Mode:</strong> {{ trip.transportMode }}</p>
+      <p><strong>Distance:</strong> {{ trip.distanceKm.toFixed(2) }} km</p>
       <p><strong>Duration:</strong> {{ formattedDuration }}</p>
+      <p><strong>Emissions:</strong> {{ trip.emissionKg.toFixed(2) }} kg CO₂e</p>
     </div>
 
-    <button class="save-button" @click="saveTrip" :disabled="loading">
-      {{ loading ? "Saving..." : "Save Trip" }}
+    <button class="start-new-trip-button" @click="startNewTrip">
+      Start New Trip
     </button>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
 
-const transportMode = route.query.mode
-const distanceKm = parseFloat(route.query.distanceKm)
-const durationSec = parseInt(route.query.durationSec)
+const tripId = route.query.tripId
 
-const loading = ref(false)
+const loading = ref(true)
+const error = ref(null)
+const trip = ref({
+  transportMode: '',
+  distanceKm: 0,
+  durationSec: 0,
+  emissionKg: 0,
+})
 
 const formattedDuration = computed(() => {
-  const sec = durationSec % 60
-  const min = Math.floor((durationSec / 60) % 60)
-  const hr = Math.floor(durationSec / 3600)
+  const sec = trip.value.durationSec % 60
+  const min = Math.floor((trip.value.durationSec / 60) % 60)
+  const hr = Math.floor(trip.value.durationSec / 3600)
   return `${hr}h ${min}m ${sec}s`
 })
 
-async function saveTrip() {
-  loading.value = true
+async function fetchTripDetails() {
+  if (!tripId) {
+    error.value = 'No trip ID provided.'
+    loading.value = false
+    return
+  }
 
-  const token = localStorage.getItem('token')
+  const token = localStorage.getItem('authToken')
   if (!token) {
-    alert("You must be logged in.")
-    router.push('/login')
+    error.value = 'User not logged in.'
+    loading.value = false
     return
   }
 
   try {
-    const res = await fetch('https://emissionscalculatorbackend.onrender.com/api/trips/complete', {
-      method: 'POST',
+    const res = await fetch(`https://emissionscalculatorbackend.onrender.com/api/trips/${tripId}`, {
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        transportMode,
-        distanceKm,
-        durationSec
-      })
     })
 
-    const data = await res.json()
-
-    if (res.ok) {
-      alert("Trip saved successfully!")
-      router.push('/home')
-    } else {
-      alert("Error saving trip: " + data.error)
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.error || 'Failed to load trip data')
     }
+
+    const data = await res.json()
+    trip.value.transportMode = data.trip.transportMode
+    trip.value.distanceKm = data.trip.distanceKm
+    trip.value.durationSec = data.trip.durationSec
+    trip.value.emissionKg = data.trip.emissionKg
   } catch (err) {
-    console.error(err)
-    alert("Failed to save trip.")
+    error.value = err.message
   } finally {
     loading.value = false
   }
 }
+
+function startNewTrip() {
+  router.push({ name: 'TripModeSelection' })
+}
+
+onMounted(() => {
+  fetchTripDetails()
+})
 </script>
 
 <style scoped>
