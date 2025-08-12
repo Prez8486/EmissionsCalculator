@@ -153,4 +153,7 @@ export default {
 .last-trip-card p {
   margin: 0.5rem 0;
 }
+  body.dark h2, th, td {
+    color: #ffffff !important;
+  }
 </style>

@@ -74,4 +74,7 @@
   color: #e2e2e2;
   line-height: 1.2;
 }
+  body.dark h2, th, td {
+    color: #ffffff !important;
+  }
 </style>

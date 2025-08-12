@@ -8,7 +8,7 @@
 
     <!-- Monthly Chart -->
     <div class="chart-section">
-      <h3>Monthly Emissions Overview</h3>
+      <h3 class="monthly-title">Monthly Emissions Overview</h3>
       <div class="chart-container fixed-chart">
         <LineChart v-if="lineChartData" :chart-data="lineChartData" :options="lineChartOptions" />
       </div>
@@ -442,5 +442,11 @@
     width: 100% !important;
     border-radius: 8px;
     margin-bottom: 1rem;
+  }
+  body.dark h2{
+    color: #ffffff !important;
+  }
+  body.dark .monthly-title {
+    color: #ffffff !important;
   }
 </style>

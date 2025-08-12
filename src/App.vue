@@ -405,4 +405,12 @@
     body.dark .settings-option:hover:not(:disabled) {
       background-color: #374151;
     }
+  body.dark .dashboard-title {
+    color: #f9fafb;
+  }
+  body.dark h2, h3, th, td{
+     color: #000000 !important;
+  }
+
+
 </style>
