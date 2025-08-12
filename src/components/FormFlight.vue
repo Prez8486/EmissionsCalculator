@@ -2,14 +2,15 @@
   <div class="form-container">
     <h2>Flight Emission Calculator</h2>
     <form>
+      <label>Flight Code:</label>
+      <input v-model="flightCode" placeholder="e.g., EK123" />
+
+      <label>Flight Date:</label>
+      <input type="date" v-model="flightDate" />
+
+      <button type="button" @click="fetchFlightDetails">Fetch Flight Info</button>
       <label>Airline Company:</label>
-      <select v-model="airline">
-        <option value="generic">Generic (0.09 t/h)</option>
-        <option value="emirates">Emirates (0.10 t/h)</option>
-        <option value="airindia">Air India (0.11 t/h)</option>
-        <option value="qantas">Qantas (0.095 t/h)</option>
-        <option value="ryanair">Ryanair (0.085 t/h)</option>
-      </select>
+      <input v-model="airline" placeholder="e.g., Emirates" />
 
       <label>Flight Class:</label>
       <select v-model="flightClass">
@@ -22,7 +23,7 @@
       <input v-model.number="flights" type="number" min="0" />
 
       <label>Average Hours per Flight:</label>
-      <input v-model.number="hours" type="number" min="0" step="0.1" />
+      <input v-model.number="hours" type="number" min="0" step="0.1" readonly />
     </form>
 
     <div v-if="emission !== null" class="result">
@@ -37,9 +38,11 @@
   export default {
     data() {
       return {
+        flightCode: '',
+        flightDate: '',
         flights: 0,
         hours: 1,
-        airline: 'generic',
+        airline: '',
         flightClass: 'economy',
         emission: null
       };
@@ -50,7 +53,36 @@
       airline: 'calculateEmission',
       flightClass: 'calculateEmission'
     },
-    methods: {
+  methods: {
+  async fetchFlightDetails() {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert("You must be logged in to save emissions.");
+        this.$router.push('/login');
+        return;
+      }
+      const res = await fetch('https://emissionscalculatorbackend.onrender.com/api/emissions/flightinfo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          flightCode: this.flightCode,
+          flightDate: this.flightDate
+        })
+      });
+      const data = await res.json();
+      this.hoursPerFlight = data.durationHours;
+      this.airline = data.airline;
+    } catch (err) {
+      alert('Flight info fetch failed.');
+      console.error(err);
+    }
+     
+  
+},
       calculateEmission() {
         const airlineFactors = {
           generic: 0.09,
@@ -64,7 +96,8 @@
           business: 1.5,
           first: 2
         };
-        const emissionPerHour = airlineFactors[this.airline] || 0.09;
+        const airlineKey = (this.airline || 'generic').toLowerCase();
+        const emissionPerHour = airlineFactors[airlineKey] || airlineFactors['generic'];
         const multiplier = classMultipliers[this.flightClass] || 1;
         this.emission = this.flights * this.hours * emissionPerHour * multiplier;
       },

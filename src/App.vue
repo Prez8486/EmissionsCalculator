@@ -50,9 +50,9 @@
             <span class="option-icon">🚪</span>
             <span>Logout</span>
           </button>
-          <button class="settings-option" disabled>
+          <button @click="toggleDarkMode" class="settings-option">
             <span class="option-icon">🌙</span>
-            <span>Dark Mode (Coming Soon)</span>
+            <span>{{ darkMode ? 'Light Mode' : 'Dark Mode' }}</span>
           </button>
           <button class="settings-option" disabled>
             <span class="option-icon">📍</span>
@@ -76,7 +76,8 @@
       return {
         isLoggedIn: false,
         isAndroid: false,
-        showSettings: false
+        showSettings: false,
+        darkMode: false
       };
     },
     methods: {
@@ -88,19 +89,27 @@
         this.isLoggedIn = false;
         this.showSettings = false;
         this.$router.push('/login');
+      },
+      toggleDarkMode() {
+        this.darkMode = !this.darkMode;
+        localStorage.setItem('darkMode', this.darkMode);
+        document.body.classList.toggle('dark', this.darkMode);
       }
     },
     created() {
       this.checkAuth();
+      this.darkMode = localStorage.getItem('darkMode') === 'true';
+      if (this.darkMode) {
+        document.body.classList.add('dark');
+      }
     },
     mounted() {
-      // Detect Android user agent
       this.isAndroid = /Android/i.test(navigator.userAgent);
     },
     watch: {
       '$route'() {
         this.checkAuth();
-        this.showSettings = false; // Close settings when navigating
+        this.showSettings = false;
       }
     }
   };
@@ -365,4 +374,35 @@
       font-size: 1.6rem;
     }
   }
+  body.dark {
+    background-color: #111827;
+    color: #f9fafb;
+  }
+
+    body.dark header {
+      background: linear-gradient(135deg, #1f2937, #111827);
+    }
+
+    body.dark .bottom-nav {
+      background: #1f2937;
+      border-top: 1px solid #374151;
+    }
+
+    body.dark .nav-item {
+      color: #d1d5db;
+    }
+
+      body.dark .nav-item.active {
+        color: #60a5fa;
+        background-color: #1e3a8a;
+      }
+
+    body.dark .settings-modal {
+      background: #1f2937;
+      color: #f9fafb;
+    }
+
+    body.dark .settings-option:hover:not(:disabled) {
+      background-color: #374151;
+    }
 </style>
