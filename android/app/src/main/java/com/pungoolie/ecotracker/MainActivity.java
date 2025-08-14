@@ -1,4 +1,4 @@
-package com.example.app;
+package com.pungoolie.ecotracker;
 
 import com.getcapacitor.BridgeActivity;
 
