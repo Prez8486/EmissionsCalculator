@@ -80,7 +80,7 @@ export default {
   async mounted() {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://emissionscalculatorbackend-1.onrender.com/api/emissions/history', {
+      const res = await fetch('https://emissionscalculatorbackend-2.onrender.com/api/emissions/history', {
         headers: {
           Authorization: `Bearer ${token}`
         }

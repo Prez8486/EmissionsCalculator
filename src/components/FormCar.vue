@@ -138,7 +138,7 @@
           trips: this.trips
         };
 
-        fetch("https://emissionscalculatorbackend-1.onrender.com/api/emissions/log", {
+        fetch("https://emissionscalculatorbackend-2.onrender.com/api/emissions/log", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -294,7 +294,7 @@
     methods: {
       async fetchMakes() {
         try {
-          const res = await fetch("https://emissionscalculatorbackend-1.onrender.com/api/emissions/car/makes");
+          const res = await fetch("https://emissionscalculatorbackend-2.onrender.com/api/emissions/car/makes");
           this.makes = await res.json();
         } catch (err) {
           console.error(err);
@@ -303,7 +303,7 @@
       },
       async fetchModels() {
         try {
-          const res = await fetch(`https://emissionscalculatorbackend-1.onrender.com/api/emissions/car/models/${this.selectedMake}`);
+          const res = await fetch(`https://emissionscalculatorbackend-2.onrender.com/api/emissions/car/models/${this.selectedMake}`);
           this.models = await res.json();
         } catch (err) {
           console.error(err);
@@ -317,7 +317,7 @@
         }
         try {
           this.loading = true;
-          const res = await fetch("https://emissionscalculatorbackend-1.onrender.com/api/emissions/car/emissions", {
+          const res = await fetch("https://emissionscalculatorbackend-2.onrender.com/api/emissions/car/emissions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -356,7 +356,7 @@
             extraLoad: this.extraLoadType
           };
 
-          const res = await fetch("https://emissionscalculatorbackend-1.onrender.com/api/emissions/log", {
+          const res = await fetch("https://emissionscalculatorbackend-2.onrender.com/api/emissions/log", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
