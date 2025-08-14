@@ -110,7 +110,7 @@
           distanceKm: this.km
         };
 
-        await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/log", {
+        await fetch("https://emissionscalculatorbackend-1.onrender.com/api/emissions/log", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
