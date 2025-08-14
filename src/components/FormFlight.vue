@@ -62,7 +62,7 @@
         this.$router.push('/login');
         return;
       }
-      const res = await fetch('https://emissionscalculatorbackend-2.onrender.com/api/emissions/flightinfo', {
+      const res = await fetch('https://emissionscalculatorbackend-3.onrender.com/api/emissions/flightinfo', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -120,7 +120,7 @@
           date: new Date().toISOString()
         };
 
-        fetch("https://emissionscalculatorbackend-2.onrender.com/api/emissions/log", {
+        fetch("https://emissionscalculatorbackend-3.onrender.com/api/emissions/log", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
