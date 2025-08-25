@@ -21,8 +21,8 @@
         <div class="card-body">
           <p><strong>Date:</strong> {{ formatDate(lastTrip.date) }}</p>
           <p><strong>Mode:</strong> {{ lastTrip.transportMode || lastTrip.mode }}</p>
-          <p><strong>Distance:</strong> {{ lastTrip.distance }} km</p>
-          <p><strong>Emissions:</strong> {{ (parseFloat(lastTrip.emissionKg || lastTrip.emission) / 1000).toFixed(4) }} tonnes</p>
+          <p><strong>Distance:</strong> {{ lastTrip.distanceKm }} km</p>
+          <p><strong>Emissions:</strong> {{ (parseFloat(lastTrip.emissionKg || lastTrip.emission) / 1000).toFixed(3) }} tonnes</p>
         </div>
       </div>
     </div>

@@ -324,13 +324,15 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              vehicleModelId: this.selectedModel,
+              vehicleMake: this.selectedMake,
+              vehicleModel: this.selectedModel,
               distanceKm: this.km
             })
           });
           const data = await res.json();
-          const emissionKg = data.data.attributes.carbon_kg;
-
+         
+          const emissionKg = data.data.co2e_kg;
+         
           // Convert to tonnes & calculate totals
           this.emissionPerTrip = emissionKg / 1000;
           this.emissionPerWeek = this.emissionPerTrip * this.trips;
@@ -353,7 +355,8 @@
         try {
           const payload = {
             transportMode: "car",
-            vehicleModelId: this.selectedModel,
+            vehicleMake: this.selectedMake,
+            vehicleModel: this.selectedModel,
             distanceKm: this.km,
             trips: this.trips,
             extraLoad: this.extraLoadType
