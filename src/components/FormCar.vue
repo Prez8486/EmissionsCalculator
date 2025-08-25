@@ -239,8 +239,8 @@
       <label>Car Make:</label>
       <select v-model="selectedMake" @change="fetchModels">
         <option disabled value="">Select Make</option>
-        <option v-for="make in makes || []" :key="make.id" :value="make.id">
-          {{ make.data.attributes.name }}
+        <option v-for="make in makes || []" :key="make.make" :value="make.make">
+          {{make.make }}
         </option>
       </select>
 
@@ -248,8 +248,8 @@
       <label>Car Model:</label>
       <select v-model="selectedModel">
         <option disabled value="">Select Model</option>
-        <option v-for="model in models || []" :key="model.id" :value="model.id">
-          {{ model.data.attributes.name }}
+        <option v-for="model in models || []" :key="model.model" :value="model.model">
+          {{ model.model }}
         </option>
       </select>
 
@@ -295,7 +295,8 @@
       async fetchMakes() {
         try {
           const res = await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/car/makes");
-          this.makes = await res.json();
+          const result = await res.json();
+          this.makes = result.data || [];
         } catch (err) {
           console.error(err);
           alert("Failed to load car makes");
@@ -304,7 +305,9 @@
       async fetchModels() {
         try {
           const res = await fetch(`https://emissionscalculatorbackend.onrender.com/api/emissions/car/models/${this.selectedMake}`);
-          this.models = await res.json();
+          const result = await res.json();
+          this.models = result.data || [];
+         
         } catch (err) {
           console.error(err);
           alert("Failed to load car models");
