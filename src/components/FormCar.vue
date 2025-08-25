@@ -249,7 +249,7 @@
       <select v-model="selectedModel">
         <option disabled value="">Select Model</option>
         <option v-for="model in models || []" :key="model.id" :value="model.id">
-          {{ model.data.attributes.name }}
+          {{ model.attributes.name }}
         </option>
       </select>
 
@@ -304,6 +304,7 @@
       async fetchModels() {
         try {
           const res = await fetch(`https://emissionscalculatorbackend-2.onrender.com/api/emissions/car/models/${this.selectedMake}`);
+          console.log("Selected Make:", this.selectedMake);
           this.models = await res.json();
         } catch (err) {
           console.error(err);
@@ -322,16 +323,17 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               vehicleModelId: this.selectedModel,
-              distanceKm: this.km
+              distanceKm: this.km,
+              trips: this.trips,
+              extraLoadType: this.extraLoadType
             })
           });
+          //recieving calculated response from backend
           const data = await res.json();
-          const emissionKg = data.data.attributes.carbon_kg;
 
-          // Convert to tonnes & calculate totals
-          this.emissionPerTrip = emissionKg / 1000;
-          this.emissionPerWeek = this.emissionPerTrip * this.trips;
-          this.emissionPerYear = this.emissionPerWeek * 52;
+          this.emissionPerTrip = data.emissionPerTrip;
+          this.emissionPerWeek = data.emissionPerWeek;
+          this.emissionPerYear = data.emissionPerYear;
         } catch (err) {
           console.error(err);
           alert("Error calculating emissions");
