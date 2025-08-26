@@ -113,4 +113,7 @@
     border-radius: 8px;
     color: #00457c;
   }
+  body.dark label {
+    color: #000000 !important;
+  }
 </style>

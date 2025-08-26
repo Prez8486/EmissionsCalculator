@@ -2,16 +2,22 @@
   <div class="form-container">
     <h2>Flight Emission Calculator</h2>
     <form>
-      <label>Flight Code:</label>
-      <input v-model="flightCode" placeholder="e.g., EK123" />
-
-      <label>Flight Date:</label>
-      <input type="date" v-model="flightDate" />
-
-      <button type="button" @click="fetchFlightDetails">Fetch Flight Info</button>
-      <label>Airline Company:</label>
-      <input v-model="airline" placeholder="e.g., Emirates" />
-
+      <label>From Airport:</label>
+      <input v-model="FromKeyword" placeholder="Type city/code" @input="searchAirports('from')" />
+      <select v-model="FromAirport">
+        <option disabled value="">Select Airport</option>
+        <option v-for="ap in FromAirports" :key="ap.code" :value="ap.code">
+          {{ ap.airport_name }} ({{ ap.iata_code }})
+        </option>
+      </select>
+      <label>To Airport:</label>
+      <input v-model="ToKeyword" placeholder="Type city/code" @input="searchAirports('to')" />
+      <select v-model="ToAirport">
+        <option disabled value="">Select Airport</option>
+        <option v-for="ap in ToAirports" :key="ap.code" :value="ap.code">
+          {{ ap.airport_name }} ({{ ap.iata_code }})
+        </option>
+      </select>
       <label>Flight Class:</label>
       <select v-model="flightClass">
         <option value="economy">Economy</option>
@@ -38,8 +44,12 @@
   export default {
     data() {
       return {
-        flightCode: '',
-        flightDate: '',
+        FromKeyword: '',
+        ToKeyword: '',
+        FromAirports: [],
+        ToAirports: [],
+        FromAirport: '',
+        ToAirport: '',
         flights: 0,
         hours: 1,
         airline: '',
@@ -54,7 +64,7 @@
       flightClass: 'calculateEmission'
     },
   methods: {
-  async fetchFlightDetails() {
+  /*async fetchFlightDetails() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -82,7 +92,25 @@
     }
      
   
-},
+},*/
+    async searchAirports(type) {
+      try {
+        const keyword = type === 'from' ? this.FromKeyword : this.ToKeyword;
+        if (!keyword || keyword.length < 3) return; // wait until 3 chars
+        const res = await fetch(`https://emissionscalculatorbackend.onrender.com/api/emissions/air/airports?keyword=${keyword}`);
+        const result = await res.json();
+        const airports = result.data || [];
+        if (type === 'from') {
+          this.FromAirports = airports || [];
+        } else {
+          this.ToAirports = airports || [];
+        }
+      }
+      catch (err) {
+        console.error("Airport search failed", err);
+      }
+    },
+
       calculateEmission() {
         const airlineFactors = {
           generic: 0.09,
@@ -189,5 +217,8 @@
     border: 1px solid #007acc;
     border-radius: 8px;
     color: #00457c;
+  }
+  body.dark label {
+    color: #000000 !important;
   }
 </style>
