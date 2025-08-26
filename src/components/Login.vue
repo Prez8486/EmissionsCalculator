@@ -4,20 +4,26 @@
     <form @submit.prevent="login">
       <input v-model="email" type="email" placeholder="Email" required />
       <input v-model="password" type="password" placeholder="Password" required />
-      <button type="submit">Login</button>
+      <button type="submit" :disabled="isLoading">
+        {{ isLoading ? 'Logging in...' : 'Login' }}
+      </button>
       <p class="message" :style="{ color: showToast ? '#28a745' : '#dc3545' }">{{ message }}</p>
     </form>
     <router-link class="link" to="/register">Don't have an account? Register</router-link>
   </div>
 </template>
 
-<script>export default {
+<script>
+import { Preferences } from '@capacitor/preferences';
+
+export default {
     data() {
       return {
         email: '',
         password: '',
         message: '',
-        showToast: false
+        showToast: false,
+        isLoading: false
       };
     },
     mounted(){
@@ -35,6 +41,7 @@
     },
     methods: {
       async login() {
+        this.isLoading = true;
         try {
           const res = await fetch('https://emissionscalculatorbackend-1.onrender.com/api/auth/login', {
             method: 'POST',
@@ -42,18 +49,25 @@
             body: JSON.stringify({ email: this.email, password: this.password })
           });
           const data = await res.json();
+
           if (data.token) {
+            await Preferences.set({ key: 'token', value: data.token });
             localStorage.setItem('token', data.token);
-            this.$router.push('/home');
+            const redirectTo = this.$route.query.redirect || '/home';
+            this.$router.push(redirectTo);
           } else {
             this.message = data.error || "Login failed.";
           }
         } catch (err) {
+          console.error('Login error:', err);
           this.message = "Login request failed.";
         }
+        finally {
+        this.isLoading = false;
       }
     }
-  };</script>
+  }
+};</script>
 
 <style scoped>
   .form-container {

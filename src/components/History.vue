@@ -134,7 +134,9 @@
       return {
         filter: { mode: '', startDate: '', endDate: '' },
         records: [],
-        selected: null
+        selected: null,
+        loading: true,
+        error: null
       };
     },
     computed: {
@@ -151,6 +153,8 @@
         return this.filteredRecords.reduce((sum, r) => sum + (parseFloat(r.emissionKg) / 1000 || 0), 0);
       },
       lineChartData() {
+        if (!this.filteredRecords.length) return null;
+
         const emissionsByDay = {};
         this.filteredRecords.forEach(r => {
           const d = new Date(r.date);
@@ -158,6 +162,8 @@
           emissionsByDay[day] = (emissionsByDay[day] || 0) + (parseFloat(r.emissionKg) / 1000);
         });
         const sorted = Object.keys(emissionsByDay).sort();
+        if (!sorted.length) return null;
+
         return {
           labels: sorted.map(d => new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })),
           datasets: [{
@@ -213,18 +219,54 @@
       async fetchRecords() {
         try {
           const token = localStorage.getItem('token');
-          const res = await fetch('https://emissionscalculatorbackend-1.onrender.com/api/emissions/history', {
-            headers: { Authorization: `Bearer ${ token }` }
+
+          if (!token) {
+          console.log('No token found, redirecting to login');
+          this.$router.push({
+            path: '/login',
+            query: { redirect: '/history' }
+          });
+          return;
+        }
+
+        this.loading = true;
+        this.error = null;
+
+        const res = await fetch('https://emissionscalculatorbackend-1.onrender.com/api/emissions/history', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         });
-      const data = await res.json();
-      this.records = data.records || [];
-    } catch(err) {
-      console.error('Failed to fetch records:', err);
+
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            console.log('Token invalid, clearing and redirecting to login');
+            localStorage.removeItem('token');
+            this.$router.push({
+              path: '/login',
+              query: { redirect: '/history' }
+            });
+            return;
+          }
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+
+        const data = await res.json();
+        this.records = data.records || [];
+        console.log('Fetched records:', this.records.length);
+
+      } catch (err) {
+        console.error('Failed to fetch records:', err);
+        this.error = err.message;
+        this.records = [];
+      } finally {
+        this.loading = false;
+      }
     }
-  }
   },
-  mounted() {
-    this.fetchRecords();
+  async mounted() {
+    await this.fetchRecords();
   }
 };
 </script>

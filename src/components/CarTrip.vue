@@ -13,13 +13,15 @@
         <button type="button" @click="endTrip" :disabled="!tracking">End Trip</button>
       </div>
 
-      
+
     </form>
   </div>
 </template>
 
 <script>
   import L from "leaflet";
+  import { Motion } from "@capacitor/motion";
+  import { Geolocation } from "@capacitor/geolocation";
 
   export default {
     data() {
@@ -30,7 +32,8 @@
         watchId: null,
         path: [],
         map: null,
-        polyline: null
+        polyline: null,
+        logInterval: null
       };
     },
     methods: {
@@ -44,10 +47,14 @@
           err => alert("Location error: " + err.message),
           { enableHighAccuracy: true }
         );
+
+        // Start sensor logging every 10s
+        this.logInterval = setInterval(this.captureAndSendSensorData, 10000);
       },
       endTrip() {
         this.tracking = false;
         if (this.watchId) navigator.geolocation.clearWatch(this.watchId);
+        if (this.logInterval) clearInterval(this.logInterval);
 
         // Calculate and store distance
         let total = 0;
@@ -101,6 +108,53 @@
         const emissionKg = (fuelEfficiency / 100) * this.km * emissionFactor;
         this.emission = emissionKg / 1000;
       },
+      async captureAndSendSensorData(){
+        let accel = {};
+        let gyro = {};
+        let gps = {};
+
+        try{
+          const motion = await Motion.getCurrentAcceleration();
+          accel = {x: motion.x, y: motion.y, z: motion.z};
+        }catch (e){
+          accel = { x: null, y: null, z: null };
+        }
+        try {
+        const rotation = await Motion.getCurrentOrientation();
+        gyro = { alpha: rotation.alpha, beta: rotation.beta, gamma: rotation.gamma };
+        } catch (e) {
+        gyro = { alpha: null, beta: null, gamma: null };
+      }
+        try {
+          const pos = await Geolocation.getCurrentPosition();
+          gps = {
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            speed: pos.coords.speed,
+            accuracy: pos.coords.accuracy,
+            altitude: pos.coords.altitude
+          };
+        } catch (e) {
+          gps = {};
+        }
+
+        const packet = {
+        timestamp: new Date().toISOString(),
+        accelerometer: accel,
+        gyroscope: gyro,
+        gps: gps
+      };
+
+      console.log("Sensor Packet:", packet);
+
+      // Send to backend temporary endpoint
+      fetch("http://localhost:8001/log-sensor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(packet)
+      }).catch(console.error);
+      },
+
       async save() {
         const token = localStorage.getItem("token");
         if (!token) return this.$router.push("/login");

@@ -19,12 +19,20 @@
       </div>
     </div>
 
-    <button
-      v-if="selectedMode && selectedMode !== 'car'"
-      class="start-button"
-      @click="startTrip"
-    >Start Trip</button>
-  </div>
+    <!-- Show start button for all modes -->
+    <div v-if="selectedMode" class="action-buttons">
+      <button
+        v-if="selectedMode === 'car'"
+        class="start-button car-start"
+        @click="startCarTrip"
+      >Start Car Trip</button>
+
+      <button
+        v-else
+        class="start-button"
+        @click="startTrip"
+      >Start {{ getModeName(selectedMode) }} Trip</button>
+    </div>
 </template>
 
 <script setup>
@@ -33,6 +41,7 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const selectedMode = ref(null)
+const isStartingTrip = ref(false)
 
 const modes = [
   { value: 'car', label: 'Car', icon: '🚗' },
@@ -44,14 +53,65 @@ const modes = [
 
 function handleSelect(mode) {
   selectedMode.value = mode
+  console.log('Selected mode:', mode)
+}
+
+function getModeName(mode) {
+  const modeObj = modes.find(m => m.value === mode)
+  return modeObj ? modeObj.label : mode
 }
 
 function goToCarDetails() {
   router.push({ name: 'CarDetails' })
 }
 
-function startTrip() {
-  router.push({ name: 'TripStart', query: { mode: selectedMode.value } })
+async function startTrip() {
+  if (!selectedMode.value) return
+
+  console.log('Starting trip for mode:', selectedMode.value)
+
+  try {
+    isStartingTrip.value = true
+
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/login')
+      return
+    }
+
+    // Call the backend to start a trip
+    const response = await fetch('https://emissionscalculatorbackend-1.onrender.com/api/trips/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        transportMode: selectedMode.value
+      })
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to start trip')
+    }
+
+    console.log('Trip started successfully:', data)
+
+    // Navigate to the appropriate form with the trip ID
+    const formRoute = `/form/${selectedMode.value}`
+    router.push({
+      path: formRoute,
+      query: { tripId: data.tripId }
+    })
+
+  } catch (error) {
+    console.error('Error starting trip:', error)
+    alert('Error starting trip: ' + error.message)
+  } finally {
+    isStartingTrip.value = false
+  }
 }
 </script>
 
