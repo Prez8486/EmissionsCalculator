@@ -21,15 +21,21 @@
       <label>Flight Class:</label>
       <select v-model="flightClass">
         <option value="economy">Economy</option>
+        <option value="premium">Premium</option>
         <option value="business">Business</option>
         <option value="first">First</option>
       </select>
 
-      <label>Number of Flights:</label>
-      <input v-model.number="flights" type="number" min="0" />
+      <label>Number of Passengers:</label>
+      <input v-model.number="passengers" type="number" min="0" />
 
-      <label>Average Hours per Flight:</label>
-      <input v-model.number="hours" type="number" min="0" step="0.1" readonly />
+      <label>
+        <input type="checkbox" v-model="roundTrip" />
+        Round Trip
+      </label>
+      <button type="submit" :disabled="loading">
+        {{ loading ? "Calculating..." : "Calculate" }}
+      </button>
     </form>
 
     <div v-if="emission !== null" class="result">
@@ -51,18 +57,19 @@
         FromAirport: '',
         ToAirport: '',
         flights: 0,
-        hours: 1,
-        airline: '',
+        passengers: 1,
+        roundTrip: false,
+        loading: false,
         flightClass: 'economy',
         emission: null
       };
     },
-    watch: {
+   /* watch: {
       flights: 'calculateEmission',
       hours: 'calculateEmission',
       airline: 'calculateEmission',
       flightClass: 'calculateEmission'
-    },
+    },*/
   methods: {
   /*async fetchFlightDetails() {
     try {
@@ -111,24 +118,40 @@
       }
     },
 
-      calculateEmission() {
-        const airlineFactors = {
-          generic: 0.09,
-          emirates: 0.10,
-          airindia: 0.11,
-          qantas: 0.095,
-          ryanair: 0.085
-        };
-        const classMultipliers = {
-          economy: 1,
-          business: 1.5,
-          first: 2
-        };
-        const airlineKey = (this.airline || 'generic').toLowerCase();
-        const emissionPerHour = airlineFactors[airlineKey] || airlineFactors['generic'];
-        const multiplier = classMultipliers[this.flightClass] || 1;
-        this.emission = this.flights * this.hours * emissionPerHour * multiplier;
-      },
+      async calculateEmission() {
+        if (!this.FromAirport || !this.ToAirport) {
+          alert("Please select both From and To airports");
+          return;
+        }
+        try {
+          this.loading = true;
+          const res = await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/flight/emissions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${ localStorage.getItem("token") }`
+          },
+        body: JSON.stringify({
+          fromAirport: this.FromAirport,
+          toAirport: this.ToAirport,
+          passengers: this.passengers,
+          flightClass: this.flightClass,
+          roundTrip: this.roundTrip,
+         /* includeWtt: this.includeWtt,
+          addRf: this.addRf*/
+        })
+      });
+      const data = await res.json();
+      const emissionKg = data.data?.co2e_kg || 0;
+      this.emission = emissionKg / 1000; // tonnes
+      /*this.distance = data.data?.distance_km || null;*/
+    } catch(err) {
+      console.error("Emission calculation failed", err);
+      alert("Error calculating flight emissions");
+    } finally {
+      this.loading = false;
+    }
+  },
       save() {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -171,9 +194,9 @@
       });
   }
     },
-  mounted() {
+ /* mounted() {
     this.calculateEmission();
-  }
+  }*/
   };
 </script>
 
