@@ -107,14 +107,14 @@ export default {
         distanceKm: this.km,
       };
 
-      await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/log", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+        await fetch("https://emissionscalculatorbackend-3.onrender.com/api/emissions/log", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${ token }`
+          },
+      body: JSON.stringify(payload)
+    });
 
       this.$router.push("/home");
     },

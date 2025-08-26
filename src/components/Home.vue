@@ -82,13 +82,10 @@ export default {
   },
   async mounted() {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(
-        "https://emissionscalculatorbackend.onrender.com/api/emissions/history",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const token = localStorage.getItem('token');
+      const res = await fetch('https://emissionscalculatorbackend-3.onrender.com/api/emissions/history', {
+        headers: {
+          Authorization: `Bearer ${token}`
         }
       );
       const data = await res.json();
@@ -164,4 +161,7 @@ export default {
 .last-trip-card p {
   margin: 0.5rem 0;
 }
+  body.dark h2, th, td {
+    color: #ffffff !important;
+  }
 </style>
