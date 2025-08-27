@@ -239,8 +239,8 @@
       <label>Car Make:</label>
       <select v-model="selectedMake" @change="fetchModels">
         <option disabled value="">Select Make</option>
-        <option v-for="make in makes || []" :key="make.id" :value="make.id">
-          {{ make.data.attributes.name }}
+        <option v-for="make in makes || []" :key="make.make" :value="make.make">
+          {{make.make }}
         </option>
       </select>
 
@@ -248,8 +248,8 @@
       <label>Car Model:</label>
       <select v-model="selectedModel">
         <option disabled value="">Select Model</option>
-        <option v-for="model in models || []" :key="model.id" :value="model.id">
-          {{ model.data.attributes.name }}
+        <option v-for="model in models || []" :key="model.model" :value="model.model">
+          {{ model.model }}
         </option>
       </select>
 
@@ -294,8 +294,11 @@
     methods: {
       async fetchMakes() {
         try {
-          const res = await fetch("https://emissionscalculatorbackend-3.onrender.com/api/emissions/car/makes");
-          this.makes = await res.json();
+
+          const res = await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/car/makes");
+          const result = await res.json();
+          this.makes = result.data || [];
+
         } catch (err) {
           console.error(err);
           alert("Failed to load car makes");
@@ -303,8 +306,12 @@
       },
       async fetchModels() {
         try {
-          const res = await fetch(`https://emissionscalculatorbackend-3.onrender.com/api/emissions/car/models/${this.selectedMake}`);
-          this.models = await res.json();
+
+          const res = await fetch(`https://emissionscalculatorbackend.onrender.com/api/emissions/car/models/${this.selectedMake}`);
+          const result = await res.json();
+          this.models = result.data || [];
+         
+
         } catch (err) {
           console.error(err);
           alert("Failed to load car models");
@@ -321,13 +328,15 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              vehicleModelId: this.selectedModel,
+              vehicleMake: this.selectedMake,
+              vehicleModel: this.selectedModel,
               distanceKm: this.km
             })
           });
           const data = await res.json();
-          const emissionKg = data.data.attributes.carbon_kg;
-
+         
+          const emissionKg = data.data.co2e_kg;
+         
           // Convert to tonnes & calculate totals
           this.emissionPerTrip = emissionKg / 1000;
           this.emissionPerWeek = this.emissionPerTrip * this.trips;
@@ -350,7 +359,8 @@
         try {
           const payload = {
             transportMode: "car",
-            vehicleModelId: this.selectedModel,
+            vehicleMake: this.selectedMake,
+            vehicleModel: this.selectedModel,
             distanceKm: this.km,
             trips: this.trips,
             extraLoad: this.extraLoadType
@@ -421,5 +431,8 @@
     border: 1px solid #007acc;
     border-radius: 8px;
     color: #00457c;
+  }
+  body.dark label {
+    color: #000000 !important;
   }
 </style>
