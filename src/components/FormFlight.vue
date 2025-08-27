@@ -6,7 +6,7 @@
       <input v-model="FromKeyword" placeholder="Type city/code" @input="searchAirports('from')" />
       <select v-model="FromAirport">
         <option disabled value="">Select Airport</option>
-        <option v-for="ap in FromAirports" :key="ap.code" :value="ap.code">
+        <option v-for="ap in FromAirports" :key="ap.iata_code" :value="ap.iata_code">
           {{ ap.airport_name }} ({{ ap.iata_code }})
         </option>
       </select>
@@ -14,7 +14,7 @@
       <input v-model="ToKeyword" placeholder="Type city/code" @input="searchAirports('to')" />
       <select v-model="ToAirport">
         <option disabled value="">Select Airport</option>
-        <option v-for="ap in ToAirports" :key="ap.code" :value="ap.code">
+        <option v-for="ap in ToAirports" :key="ap.iata_code" :value="ap.iata_code">
           {{ ap.airport_name }} ({{ ap.iata_code }})
         </option>
       </select>
@@ -33,7 +33,7 @@
         <input type="checkbox" v-model="roundTrip" />
         Round Trip
       </label>
-      <button type="submit" :disabled="loading">
+      <button type="button" @click="calculateEmission" :disabled="loading">
         {{ loading ? "Calculating..." : "Calculate" }}
       </button>
     </form>
@@ -162,12 +162,13 @@
 
         const payload = {
           transportMode: 'flight',
-          distanceKm: this.flights * this.hours * 900, // Approx flight distance
-          emissionKg: this.emission * 1000, // Convert tonnes to kg
-          flights: this.flights,
-          hoursPerFlight: this.hours,
-          airline: this.airline,
+         
+          emissionKg: this.emission , // Convert tonnes to kg
+          passengers: this.passengers,
           flightClass: this.flightClass,
+          roundTrip: this.roundTrip,
+          fromAirport: this.FromAirport,
+          toAirport: this.ToAirport,
           date: new Date().toISOString()
         };
 
