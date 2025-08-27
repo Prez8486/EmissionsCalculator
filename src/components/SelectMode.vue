@@ -46,7 +46,7 @@ export default {
       isNative: false,
       currentIndex: 0,
       modes: [
-        { value: 'car', label: 'Add a car trip', icon: 'fa-car', route: '/cartrip' },
+        { value: 'car', label: 'Add a car trip', icon: 'fa-car', route: '/form/car' },
         { value: 'bus', label: 'Add a bus journey', icon: 'fa-bus', route: '/form/bus' },
         { value: 'tram', label: 'Add a tram ride', icon: 'fa-subway', route: '/form/tram' },
         { value: 'metro', label: 'Add a metro/subway trip', icon: 'fa-train', route: '/form/metro' },
