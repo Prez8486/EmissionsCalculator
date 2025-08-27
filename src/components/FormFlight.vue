@@ -6,7 +6,7 @@
       <input v-model="FromKeyword" placeholder="Type city/code" @input="searchAirports('from')" />
       <select v-model="FromAirport">
         <option disabled value="">Select Airport</option>
-        <option v-for="ap in FromAirports" :key="ap.code" :value="ap.code">
+        <option v-for="ap in FromAirports" :key="ap.iata_code" :value="ap.iata_code">
           {{ ap.airport_name }} ({{ ap.iata_code }})
         </option>
       </select>
@@ -14,7 +14,7 @@
       <input v-model="ToKeyword" placeholder="Type city/code" @input="searchAirports('to')" />
       <select v-model="ToAirport">
         <option disabled value="">Select Airport</option>
-        <option v-for="ap in ToAirports" :key="ap.code" :value="ap.code">
+        <option v-for="ap in ToAirports" :key="ap.iata_code" :value="ap.iata_code">
           {{ ap.airport_name }} ({{ ap.iata_code }})
         </option>
       </select>
@@ -33,7 +33,7 @@
         <input type="checkbox" v-model="roundTrip" />
         Round Trip
       </label>
-      <button type="submit" :disabled="loading">
+      <button type="button" @click="calculateEmission" :disabled="loading">
         {{ loading ? "Calculating..." : "Calculate" }}
       </button>
     </form>
