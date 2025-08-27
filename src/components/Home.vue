@@ -3,7 +3,7 @@
     <h1 class="dashboard-title mb-4">Emissions Dashboard</h1>
 
     <!-- 2x2 Grid for Dashboard Cards -->
-    <div class="row g-4">
+    <div class="row g-2">
       <div class="col-md-6" v-for="(card, i) in cards" :key="i">
         <div class="card dashboard-card h-100">
           <div class="card-body text-center">
@@ -21,8 +21,14 @@
         <div class="card-body">
           <p><strong>Date:</strong> {{ formatDate(lastTrip.date) }}</p>
           <p><strong>Mode:</strong> {{ lastTrip.transportMode || lastTrip.mode }}</p>
-          <p><strong>Distance:</strong> {{ lastTrip.distanceKm }} km</p>
-          <p><strong>Emissions:</strong> {{ (parseFloat(lastTrip.emissionKg || lastTrip.emission) / 1000).toFixed(3) }} tonnes</p>
+
+          <p><strong>Distance:</strong> {{ lastTrip.distance }} km</p>
+          <p>
+            <strong>Emissions:</strong>
+            {{ (parseFloat(lastTrip.emissionKg || lastTrip.emission) / 1000).toFixed(3) }} tonnes
+          </p>
+
+         
         </div>
       </div>
     </div>
@@ -33,7 +39,7 @@
 export default {
   data() {
     return {
-      records: []
+      records: [],
     };
   },
   computed: {
@@ -52,10 +58,10 @@ export default {
         acc[mode] = (acc[mode] || 0) + 1;
         return acc;
       }, {});
-      return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+      return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
     },
     uniqueTripTypes() {
-      return [...new Set(this.filteredRecords.map(r => r.transportMode || r.mode))];
+      return [...new Set(this.filteredRecords.map((r) => r.transportMode || r.mode))];
     },
     lastTrip() {
       return this.filteredRecords.length > 0
@@ -64,35 +70,35 @@ export default {
     },
     cards() {
       return [
-        { title: 'Total Emissions', value: this.totalEmissions.toFixed(2) + ' t' },
-        { title: 'Most Common Mode', value: this.mostCommonMode },
-        { title: 'Unique Trip Types', value: this.uniqueTripTypes.length },
-        { title: 'Total Trips', value: this.filteredRecords.length }
+        { title: "Total Emissions", value: this.totalEmissions.toFixed(2) + " t" },
+        { title: "Most Common Mode", value: this.mostCommonMode },
+        { title: "Unique Trip Types", value: this.uniqueTripTypes.length },
+        { title: "Total Trips", value: this.filteredRecords.length },
       ];
-    }
+    },
   },
   methods: {
     formatDate(dateStr) {
       const date = new Date(dateStr);
-      return isNaN(date) ? 'Invalid Date' : date.toLocaleDateString('en-GB');
-    }
+      return isNaN(date) ? "Invalid Date" : date.toLocaleDateString("en-GB");
+    },
   },
   async mounted() {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://emissionscalculatorbackend.onrender.com/api/emissions/history', {
+      const res = await fetch('https://emissionscalculatorbackend-3.onrender.com/api/emissions/history', {
         headers: {
           Authorization: `Bearer ${token}`
         }
-      });
+      );
       const data = await res.json();
       if (data.records) {
         this.records = data.records;
       }
     } catch (err) {
-      console.error('Failed to fetch records:', err);
+      console.error("Failed to fetch records:", err);
     }
-  }
+  },
 };
 </script>
 
@@ -120,6 +126,11 @@ export default {
   border-radius: 12px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s ease;
+}
+
+.android-app .dashboard-card {
+  background-color: #e0e7ff00;
+  box-shadow: 0 4px 15px rgba(255, 8, 8, 0.836);
 }
 
 .dashboard-card:hover {

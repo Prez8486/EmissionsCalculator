@@ -1,17 +1,28 @@
 <template>
   <div id="app">
     <!-- Header - simplified, no navigation -->
-    <header v-if="isLoggedIn">
+    <header v-if="!isAndroid && isLoggedIn" class="website-header">
+      <h1>EcoHabit</h1>
+      <nav class="website-nav">
+        <router-link to="/home">Home</router-link>
+        <router-link to="/history">History</router-link>
+        <router-link to="/leaderboard">Leaderboard</router-link>
+        <button @click="showSettings = true" class="settings-btn">Settings</button>
+        <router-link to="/select-mode" class="website-addtrip">+</router-link>
+      </nav>
+    </header>
+
+    <header v-if="isAndroid && isLoggedIn">
       <h1>EcoHabit</h1>
     </header>
 
     <!-- Main content area -->
-    <main :class="{ 'with-bottom-nav': isLoggedIn }">
+    <main :class="{ 'with-bottom-nav': isAndroid && isLoggedIn }">
       <router-view />
     </main>
 
     <!-- Bottom Navigation Bar - only shown when logged in -->
-    <nav v-if="isLoggedIn" class="bottom-nav">
+    <nav v-if="isAndroid && isLoggedIn" class="bottom-nav">
       <router-link to="/home" class="nav-item" active-class="active">
         <div class="nav-icon">🏠</div>
         <span class="nav-label">Home</span>
@@ -70,6 +81,7 @@
 </template>
 
 <script>
+import { Capacitor } from '@capacitor/core';
   export default {
     name: 'App',
     data() {
@@ -98,6 +110,7 @@
     },
     created() {
       this.checkAuth();
+      this.checkPlatform();
       this.darkMode = localStorage.getItem('darkMode') === 'true';
       if (this.darkMode) {
         document.body.classList.add('dark');
@@ -116,6 +129,73 @@
 </script>
 
 <style>
+  .website-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+
+  .website-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+  }
+
+  .website-nav {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+  }
+
+  .website-nav a.router-link-active {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .website-nav a, .website-nav .settings-btn {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+  }
+
+  .website-nav a:hover, .website-nav .settings-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .website-nav .settings-btn {
+    background: none;
+    border: none;
+  }
+
+  .website-nav .website-addtrip {
+    background: linear-gradient(135deg, #10b981, #0f9d6e);
+    color: white;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+  }
+
+  .website-nav .website-addtrip:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .website-nav .website-plus-button.router-link-active {
+    background: linear-gradient(135deg, #10b981, #0f9d6e);
+  }
+
   body {
     margin: 0;
     font-family: 'Segoe UI', sans-serif;

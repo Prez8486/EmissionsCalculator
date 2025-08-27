@@ -213,7 +213,7 @@
       async fetchRecords() {
         try {
           const token = localStorage.getItem('token');
-          const res = await fetch('https://emissionscalculatorbackend.onrender.com/api/emissions/history', {
+          const res = await fetch('https://emissionscalculatorbackend-3.onrender.com/api/emissions/history', {
             headers: { Authorization: `Bearer ${ token }` }
         });
       const data = await res.json();
