@@ -138,7 +138,7 @@
           trips: this.trips
         };
 
-        fetch("https://emissionscalculatorbackend-3.onrender.com/api/emissions/log", {
+        fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/log", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -324,7 +324,7 @@
         }
         try {
           this.loading = true;
-          const res = await fetch("https://emissionscalculatorbackend-3.onrender.com/api/emissions/car/emissions", {
+          const res = await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/car/emissions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -366,7 +366,7 @@
             extraLoad: this.extraLoadType
           };
 
-          const res = await fetch("https://emissionscalculatorbackend-3.onrender.com/api/emissions/log", {
+          const res = await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/log", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

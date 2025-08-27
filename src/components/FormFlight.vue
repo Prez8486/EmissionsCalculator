@@ -79,7 +79,7 @@
         this.$router.push('/login');
         return;
       }
-      const res = await fetch('https://emissionscalculatorbackend-3.onrender.com/api/emissions/flightinfo', {
+      const res = await fetch('https://emissionscalculatorbackend.onrender.com/api/emissions/flightinfo', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -162,16 +162,17 @@
 
         const payload = {
           transportMode: 'flight',
-          distanceKm: this.flights * this.hours * 900, // Approx flight distance
-          emissionKg: this.emission * 1000, // Convert tonnes to kg
-          flights: this.flights,
-          hoursPerFlight: this.hours,
-          airline: this.airline,
+         
+          emissionKg: this.emission , // Convert tonnes to kg
+          passengers: this.passengers,
           flightClass: this.flightClass,
+          roundTrip: this.roundTrip,
+          fromAirport: this.FromAirport,
+          toAirport: this.ToAirport,
           date: new Date().toISOString()
         };
 
-        fetch("https://emissionscalculatorbackend-3.onrender.com/api/emissions/log", {
+        fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/log", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
