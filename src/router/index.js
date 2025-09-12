@@ -11,6 +11,7 @@ import Register from '../components/Register.vue';
 import History from '../components/History.vue';
 import Leaderboard from '../components/Leaderboard.vue';
 import CarTrip from '../components/CarTrip.vue';
+import Comparison from '@/components/Comparison.vue';
 const routes = [
   { path: '/', component: Login },
   { path: '/login', component: Login },
@@ -25,6 +26,7 @@ const routes = [
   { path: '/leaderboard', component: Leaderboard },
   { path: '/history', component: History },
   { path: '/cartrip', component: CarTrip },
+  { path: '/comparison', component: Comparison },
 ];
 
 export default createRouter({
