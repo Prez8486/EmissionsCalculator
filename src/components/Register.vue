@@ -26,7 +26,7 @@
     methods: {
       async register() {
         try {
-          const res = await fetch('https://emissionscalculatorbackend.onrender.com/api/auth/register', {
+          const res = await fetch('http://136.186.108.171/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

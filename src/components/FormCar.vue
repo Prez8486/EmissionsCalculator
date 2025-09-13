@@ -74,7 +74,7 @@
       async fetchMakes() {
         try {
 
-          const res = await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/car/makes");
+          const res = await fetch("http://136.186.108.171/api/emissions/car/makes");
           const result = await res.json();
           this.makes = result.data || [];
 
@@ -86,7 +86,7 @@
       async fetchModels() {
         try {
 
-          const res = await fetch(`https://emissionscalculatorbackend.onrender.com/api/emissions/car/models/${this.selectedMake}`);
+          const res = await fetch(`http://136.186.108.171/api/emissions/car/models/${this.selectedMake}`);
           const result = await res.json();
           this.models = result.data || [];
 
@@ -103,7 +103,7 @@
         }
         try {
           this.loading = true;
-          const res = await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/car/emissions", {
+          const res = await fetch("http://136.186.108.171/api/emissions/car/emissions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -145,7 +145,7 @@
             extraLoad: this.extraLoadType
           };
 
-          const res = await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/log", {
+          const res = await fetch("http://136.186.108.171/api/emissions/log", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -370,7 +370,7 @@
       // === API CALLS ===
       async fetchMakes() {
         try {
-          const res = await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/car/makes");
+          const res = await fetch("http://136.186.108.171/api/emissions/car/makes");
           const result = await res.json();
           this.makes = result.data || [];
         } catch (err) {
@@ -380,7 +380,7 @@
       },
       async fetchModels() {
         try {
-          const res = await fetch(`https://emissionscalculatorbackend.onrender.com/api/emissions/car/models/${this.selectedMake}`);
+          const res = await fetch(`http://136.186.108.171/api/emissions/car/models/${this.selectedMake}`);
           const result = await res.json();
           this.models = result.data || [];
         } catch (err) {
@@ -395,7 +395,7 @@
         }
         try {
           this.loading = true;
-          const res = await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/car/emissions", {
+          const res = await fetch("http://136.186.108.171/api/emissions/car/emissions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -436,7 +436,7 @@
             emissionKg: this.emissionPerTrip * 1000
           };
 
-          const res = await fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/log", {
+          const res = await fetch("http://136.186.108.171/api/emissions/log", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
