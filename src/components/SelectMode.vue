@@ -12,7 +12,7 @@
 
     <div v-else class="carousel-container">
       <h2 class="carousel-title">Select Transport Mode</h2>
-      
+
       <div class="carousel">
         <button @click="prevMode" class="arrow-btn left-arrow">
           <i class="fas fa-chevron-left"></i>
@@ -30,7 +30,7 @@
         </button>
       </div>
 
-      <router-link :to="currentMode.route" class="select-button">
+      <router-link :to="{path: currentMode.route, query: { mode: currentMode.value }}" class="select-button" >
         Select Trip
       </router-link>
     </div>

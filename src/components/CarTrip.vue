@@ -12,8 +12,6 @@
         <button type="button" @click="startTrip" :disabled="tracking">Start Trip</button>
         <button type="button" @click="endTrip" :disabled="!tracking">End Trip</button>
       </div>
-
-
     </form>
   </div>
 </template>
@@ -32,43 +30,108 @@ import L from "leaflet";
         watchId: null,
         path: [],
         map: null,
-        polyline: null
+        polyline: null,
+
+        //For sensor batching
+        sensorBuffer: [],
+        batchSize: 600,        // 600 samples = 1 minute at 10Hz
+        sampleInterval: null,  // setInterval handle
+        tripId: "trip123",     // placeholder
+        userId: "user123",
+        tripStartTime: null,
+        transportMode: this.$route.query.mode
       };
     },
     methods: {
-      startTrip() {
+      async startTrip() {
+        try {
+          this.tripStartTime = Date.now();
+          const token = localStorage.getItem("token");
+          const response = await fetch("http://10.0.2.2:5000/api/trips/start", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ transportMode: "car" })
+          });
+
+        const data = await response.json();
+        this.tripId = data.tripId; // Use dynamic tripId instead of "trip123"
+        console.log("Trip started with ID:", this.tripId, this.transportMode);
+
         this.path = [];
         this.km = 0;
         this.tracking = true;
 
-      this.watchId = navigator.geolocation.watchPosition(
-        this.trackPosition,
-        (err) => alert("Location error: " + err.message),
-        { enableHighAccuracy: true }
-      );
+        this.watchId = navigator.geolocation.watchPosition(
+          this.trackPosition,
+          (err) => alert("Location error: " + err.message),
+          { enableHighAccuracy: true }
+        );
 
-        // Start sensor logging every 10s
-        this.logInterval = setInterval(this.captureAndSendSensorData, 10000);
-    },
-    endTrip() {
-      this.tracking = false;
-      if (this.watchId) navigator.geolocation.clearWatch(this.watchId);
-        if (this.logInterval) clearInterval(this.logInterval);
-
-      // Calculate and store distance
-      let total = 0;
-      for (let i = 1; i < this.path.length; i++) {
-        const prev = L.latLng(this.path[i - 1]);
-        const curr = L.latLng(this.path[i]);
-        total += prev.distanceTo(curr); // meters
+        // Start sensor logging every 10hz (100ms)
+        this.logInterval = setInterval(this.captureAndBufferSensorData, 100);
+      } catch (error) {
+        console.error("Failed to start trip:", error);
+        alert("Could not start trip");
+        return;
       }
-
-      const kmValue = (total / 1000).toFixed(2);
-      localStorage.setItem("carTripDistance", kmValue); // Save to localStorage
-
-      // Redirect to car form
-      this.$router.push("/form/car");
     },
+
+      async endTrip() {
+        try {
+          this.tracking = false;
+
+          if (this.watchId) navigator.geolocation.clearWatch(this.watchId);
+          if (this.logInterval) clearInterval(this.logInterval);
+
+          // Flush remaining buffer if not empty
+          if (this.sensorBuffer.length > 0) {
+            await this.sendBatch(true);
+          }
+
+          // Calculate distance and duration
+          let total = 0;
+          for (let i = 1; i < this.path.length; i++) {
+            const prev = L.latLng(this.path[i - 1]);
+            const curr = L.latLng(this.path[i]);
+            total += prev.distanceTo(curr); // meters
+          }
+
+          const distanceKm = (total / 1000);
+          const durationSeconds = Math.floor((Date.now() - this.tripStartTime) / 1000); // You'll need to track start time
+
+          // Call backend to end trip
+          const token = localStorage.getItem("token");
+          const response = await fetch("http://localhost:3000/api/trips/end", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              tripId: this.tripId,
+              distanceKm: distanceKm,
+              durationSeconds: durationSeconds
+            })
+          });
+
+          const data = await response.json();
+          console.log("Trip ended:", data);
+
+          // Store for form if needed
+          localStorage.setItem("lastTripDistance", distanceKm.toFixed(2));
+
+          // Redirect to appropriate form or home
+          this.$router.push("/home"); //want to go after trip ends
+
+        } catch (error) {
+          console.error("Failed to end trip:", error);
+          alert("Error ending trip");
+        }
+      },
+
     trackPosition(pos) {
       const latlng = [pos.coords.latitude, pos.coords.longitude];
       this.path.push(latlng);
@@ -90,6 +153,7 @@ import L from "leaflet";
       this.km = parseFloat((total / 1000).toFixed(2)); // live update
       this.calculateEmission();
     },
+
     calculateDistance() {
       let total = 0;
       for (let i = 1; i < this.path.length; i++) {
@@ -100,13 +164,15 @@ import L from "leaflet";
       this.km = (total / 1000).toFixed(2);
       this.calculateEmission();
     },
+
     calculateEmission() {
       const fuelEfficiency = 7.5;
       const emissionFactor = 2.31;
       const emissionKg = (fuelEfficiency / 100) * this.km * emissionFactor;
       this.emission = emissionKg / 1000;
     },
-      async captureAndSendSensorData(){
+
+    async captureAndSendSensorData(){
         let accel = {};
         let gyro = {};
         let gps = {};
@@ -114,14 +180,18 @@ import L from "leaflet";
         try{
           const motion = await Motion.getCurrentAcceleration();
           accel = {x: motion.x, y: motion.y, z: motion.z};
-        }catch (e){
+          console.log("Accelerometer data:", accel);
+        }catch(error){
           accel = { x: null, y: null, z: null };
+          console.log("Accelerometer error:", error);
         }
         try {
         const rotation = await Motion.getCurrentOrientation();
         gyro = { alpha: rotation.alpha, beta: rotation.beta, gamma: rotation.gamma };
-        } catch (e) {
+        console.log("Gyroscope data:", gyro);
+        } catch(error) {
         gyro = { alpha: null, beta: null, gamma: null };
+        console.log("Gyroscope error:", error);
       }
         try {
           const pos = await Geolocation.getCurrentPosition();
@@ -132,10 +202,12 @@ import L from "leaflet";
             accuracy: pos.coords.accuracy,
             altitude: pos.coords.altitude
           };
-        } catch (e) {
+          console.log("✅ GPS data:", gps);
+        } catch {
           gps = {};
         }
 
+        //build one reading
         const packet = {
         timestamp: new Date().toISOString(),
         accelerometer: accel,
@@ -143,16 +215,52 @@ import L from "leaflet";
         gps: gps
       };
 
+      // Add to buffer
+      this.sensorBuffer.push(packet);
+      console.log(`📊 Buffer size: ${this.sensorBuffer.length}/600`);
+
       console.log("Sensor Packet:", packet);
+          // Check buffer size
+      if (this.sensorBuffer.length >= this.batchSize) {
+        await this.sendBatch(false);
+      }
+    },
 
-      // Send to backend temporary endpoint
-      fetch("http://localhost:8001/log-sensor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(packet)
-      }).catch(console.error);
-      },
+    async sendBatch(forceSend = false) {
+      if (!this.sensorBuffer.length && !forceSend) return;
+      console.log(`📤 Sending batch of ${this.sensorBuffer.length} samples...`);
 
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch("http://10.0.2.2:5000/api/ai/predict", { // Fixed endpoint
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}` // Add auth header
+          },
+          body: JSON.stringify({
+            sensorDataArray: this.sensorBuffer, // Match expected format
+            tripId: this.tripId,
+            userId: this.userId // You might not need this as it comes from token
+          })
+        });
+
+        const result = await response.json();
+        console.log("✅ Batch sent successfully, prediction:", result);
+
+        // Handle the prediction response
+        if (result.success && result.prediction) {
+          console.log(`🎯 Predicted mode: ${result.prediction.mode} (${result.prediction.confidence})`);
+          // You can store this prediction or show it to user
+          this.lastPrediction = result.prediction;
+      }
+    } catch (error) {
+      console.error("❌ Failed to send batch:", error);
+    }
+    // Reset buffer
+    this.sensorBuffer = [];
+  }
+},
     async save() {
       const token = localStorage.getItem("token");
       if (!token) return this.$router.push("/login");
@@ -173,6 +281,7 @@ import L from "leaflet";
 
       this.$router.push("/home");
     },
+
     loadMap() {
       navigator.geolocation.getCurrentPosition((pos) => {
         const center = [pos.coords.latitude, pos.coords.longitude];
@@ -180,10 +289,10 @@ import L from "leaflet";
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: "© OpenStreetMap",
         }).addTo(this.map);
+
         this.polyline = L.polyline([], { color: "red" }).addTo(this.map);
       });
     },
-  },
   mounted() {
     this.loadMap();
   },

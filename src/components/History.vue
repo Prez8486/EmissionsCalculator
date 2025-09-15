@@ -219,29 +219,8 @@
       async fetchRecords() {
         try {
           const token = localStorage.getItem('token');
-<<<<<<< HEAD
-
-          if (!token) {
-          console.log('No token found, redirecting to login');
-          this.$router.push({
-            path: '/login',
-            query: { redirect: '/history' }
-          });
-          return;
-        }
-
-        this.loading = true;
-        this.error = null;
-
-        const res = await fetch('https://emissionscalculatorbackend-1.onrender.com/api/emissions/history', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-=======
           const res = await fetch('https://emissionscalculatorbackend.onrender.com/api/emissions/history', {
             headers: { Authorization: `Bearer ${ token }` }
->>>>>>> 73e6c830377e0044a54d5f0e0a7a1a6c1cde6e28
         });
 
         if (!res.ok) {
