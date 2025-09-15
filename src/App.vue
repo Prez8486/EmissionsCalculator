@@ -65,6 +65,10 @@
             <span class="option-icon">🌙</span>
             <span>{{ darkMode ? 'Light Mode' : 'Dark Mode' }}</span>
           </button>
+          <button @click="$router.push('/changepassword')" class="settings-option">
+            <span class="option-icon">🔑</span>
+            <span>Change Password</span>
+          </button>
           <button class="settings-option" disabled>
             <span class="option-icon">📍</span>
             <span>Location Settings (Coming Soon)</span>
