@@ -87,7 +87,7 @@ export default {
         headers: {
           Authorization: `Bearer ${token}`
         }
-      );
+      })
       const data = await res.json();
       if (data.records) {
         this.records = data.records;
