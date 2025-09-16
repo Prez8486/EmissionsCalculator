@@ -2,28 +2,40 @@
   <div class="form-container">
     <h2>Flight Emission Calculator</h2>
     <form>
-      <label>Flight Code:</label>
-      <input v-model="flightCode" placeholder="e.g., EK123" />
-
-      <label>Flight Date:</label>
-      <input type="date" v-model="flightDate" />
-
-      <button type="button" @click="fetchFlightDetails">Fetch Flight Info</button>
-      <label>Airline Company:</label>
-      <input v-model="airline" placeholder="e.g., Emirates" />
-
+      <label>From Airport:</label>
+      <input v-model="FromKeyword" placeholder="Type city/code" @input="searchAirports('from')" />
+      <select v-model="FromAirport">
+        <option disabled value="">Select Airport</option>
+        <option v-for="ap in FromAirports" :key="ap.iata_code" :value="ap.iata_code">
+          {{ ap.airport_name }} ({{ ap.iata_code }})
+        </option>
+      </select>
+      <label>To Airport:</label>
+      <input v-model="ToKeyword" placeholder="Type city/code" @input="searchAirports('to')" />
+      <select v-model="ToAirport">
+        <option disabled value="">Select Airport</option>
+        <option v-for="ap in ToAirports" :key="ap.iata_code" :value="ap.iata_code">
+          {{ ap.airport_name }} ({{ ap.iata_code }})
+        </option>
+      </select>
       <label>Flight Class:</label>
       <select v-model="flightClass">
         <option value="economy">Economy</option>
+        <option value="premium">Premium</option>
         <option value="business">Business</option>
         <option value="first">First</option>
       </select>
 
-      <label>Number of Flights:</label>
-      <input v-model.number="flights" type="number" min="0" />
+      <label>Number of Passengers:</label>
+      <input v-model.number="passengers" type="number" min="0" />
 
-      <label>Average Hours per Flight:</label>
-      <input v-model.number="hours" type="number" min="0" step="0.1" readonly />
+      <label>
+        <input type="checkbox" v-model="roundTrip" />
+        Round Trip
+      </label>
+      <button type="button" @click="calculateEmission" :disabled="loading">
+        {{ loading ? "Calculating..." : "Calculate" }}
+      </button>
     </form>
 
     <div v-if="emission !== null" class="result">
@@ -38,23 +50,28 @@
   export default {
     data() {
       return {
-        flightCode: '',
-        flightDate: '',
+        FromKeyword: '',
+        ToKeyword: '',
+        FromAirports: [],
+        ToAirports: [],
+        FromAirport: '',
+        ToAirport: '',
         flights: 0,
-        hours: 1,
-        airline: '',
+        passengers: 1,
+        roundTrip: false,
+        loading: false,
         flightClass: 'economy',
         emission: null
       };
     },
-    watch: {
+   /* watch: {
       flights: 'calculateEmission',
       hours: 'calculateEmission',
       airline: 'calculateEmission',
       flightClass: 'calculateEmission'
-    },
+    },*/
   methods: {
-  async fetchFlightDetails() {
+  /*async fetchFlightDetails() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -62,7 +79,7 @@
         this.$router.push('/login');
         return;
       }
-      const res = await fetch('https://emissionscalculatorbackend-2.onrender.com/api/emissions/flightinfo', {
+      const res = await fetch('http://136.186.108.171/api/emissions/flightinfo', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,25 +99,59 @@
     }
      
   
-},
-      calculateEmission() {
-        const airlineFactors = {
-          generic: 0.09,
-          emirates: 0.10,
-          airindia: 0.11,
-          qantas: 0.095,
-          ryanair: 0.085
-        };
-        const classMultipliers = {
-          economy: 1,
-          business: 1.5,
-          first: 2
-        };
-        const airlineKey = (this.airline || 'generic').toLowerCase();
-        const emissionPerHour = airlineFactors[airlineKey] || airlineFactors['generic'];
-        const multiplier = classMultipliers[this.flightClass] || 1;
-        this.emission = this.flights * this.hours * emissionPerHour * multiplier;
-      },
+},*/
+    async searchAirports(type) {
+      try {
+        const keyword = type === 'from' ? this.FromKeyword : this.ToKeyword;
+        if (!keyword || keyword.length < 3) return; // wait until 3 chars
+        const res = await fetch(`http://136.186.108.171/api/emissions/air/airports?keyword=${keyword}`);
+        const result = await res.json();
+        const airports = result.data || [];
+        if (type === 'from') {
+          this.FromAirports = airports || [];
+        } else {
+          this.ToAirports = airports || [];
+        }
+      }
+      catch (err) {
+        console.error("Airport search failed", err);
+      }
+    },
+
+      async calculateEmission() {
+        if (!this.FromAirport || !this.ToAirport) {
+          alert("Please select both From and To airports");
+          return;
+        }
+        try {
+          this.loading = true;
+          const res = await fetch("http://136.186.108.171/api/emissions/flight/emissions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${ localStorage.getItem("token") }`
+          },
+        body: JSON.stringify({
+          fromAirport: this.FromAirport,
+          toAirport: this.ToAirport,
+          passengers: this.passengers,
+          flightClass: this.flightClass,
+          roundTrip: this.roundTrip,
+         /* includeWtt: this.includeWtt,
+          addRf: this.addRf*/
+        })
+      });
+      const data = await res.json();
+      const emissionKg = data.data?.co2e_kg || 0;
+      this.emission = emissionKg / 1000; // tonnes
+      /*this.distance = data.data?.distance_km || null;*/
+    } catch(err) {
+      console.error("Emission calculation failed", err);
+      alert("Error calculating flight emissions");
+    } finally {
+      this.loading = false;
+    }
+  },
       save() {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -111,16 +162,17 @@
 
         const payload = {
           transportMode: 'flight',
-          distanceKm: this.flights * this.hours * 900, // Approx flight distance
-          emissionKg: this.emission * 1000, // Convert tonnes to kg
-          flights: this.flights,
-          hoursPerFlight: this.hours,
-          airline: this.airline,
+         
+          emissionKg: this.emission , // Convert tonnes to kg
+          passengers: this.passengers,
           flightClass: this.flightClass,
+          roundTrip: this.roundTrip,
+          fromAirport: this.FromAirport,
+          toAirport: this.ToAirport,
           date: new Date().toISOString()
         };
 
-        fetch("https://emissionscalculatorbackend-2.onrender.com/api/emissions/log", {
+        fetch("http://136.186.108.171/api/emissions/log", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -143,9 +195,9 @@
       });
   }
     },
-  mounted() {
+ /* mounted() {
     this.calculateEmission();
-  }
+  }*/
   };
 </script>
 
@@ -189,5 +241,8 @@
     border: 1px solid #007acc;
     border-radius: 8px;
     color: #00457c;
+  }
+  body.dark label {
+    color: #000000 !important;
   }
 </style>

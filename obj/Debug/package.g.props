@@ -9,9 +9,9 @@
     <PackageJsonScriptsBuild Condition="$(PackageJsonScriptsBuild) == ''">vite build</PackageJsonScriptsBuild>
     <PackageJsonScriptsPreview Condition="$(PackageJsonScriptsPreview) == ''">vite preview</PackageJsonScriptsPreview>
     <PackageJsonScriptsLint Condition="$(PackageJsonScriptsLint) == ''">eslint . --fix</PackageJsonScriptsLint>
-    <PackageJsonDependenciesCapacitorAndroid Condition="$(PackageJsonDependenciesCapacitorAndroid) == ''">^7.2.0</PackageJsonDependenciesCapacitorAndroid>
-    <PackageJsonDependenciesCapacitorCli Condition="$(PackageJsonDependenciesCapacitorCli) == ''">^7.2.0</PackageJsonDependenciesCapacitorCli>
-    <PackageJsonDependenciesCapacitorCore Condition="$(PackageJsonDependenciesCapacitorCore) == ''">^7.2.0</PackageJsonDependenciesCapacitorCore>
+    <PackageJsonDependenciesCapacitorAndroid Condition="$(PackageJsonDependenciesCapacitorAndroid) == ''">^7.4.3</PackageJsonDependenciesCapacitorAndroid>
+    <PackageJsonDependenciesCapacitorCli Condition="$(PackageJsonDependenciesCapacitorCli) == ''">^7.4.3</PackageJsonDependenciesCapacitorCli>
+    <PackageJsonDependenciesCapacitorCore Condition="$(PackageJsonDependenciesCapacitorCore) == ''">^7.4.3</PackageJsonDependenciesCapacitorCore>
     <PackageJsonDependenciesCapacitorGeolocation Condition="$(PackageJsonDependenciesCapacitorGeolocation) == ''">^7.1.2</PackageJsonDependenciesCapacitorGeolocation>
     <PackageJsonDependenciesPopperjsCore Condition="$(PackageJsonDependenciesPopperjsCore) == ''">^2.11.8</PackageJsonDependenciesPopperjsCore>
     <PackageJsonDependenciesBootstrap Condition="$(PackageJsonDependenciesBootstrap) == ''">^5.3.6</PackageJsonDependenciesBootstrap>

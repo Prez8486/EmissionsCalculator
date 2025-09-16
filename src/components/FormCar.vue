@@ -1,16 +1,24 @@
 <template>
   <div class="form-container">
-    <h2>Car Emission Calculator</h2>
-    <form @submit.prevent="calculateEmission">
-      <!-- Distance -->
-      <label>Distance of Trip (km):</label>
-      <input v-model.number="km" type="number" min="0" />
+    <h2>Car Emission Calculator + Trip Tracker</h2>
 
-      <!-- Trips -->
+    <!-- Live Trip Tracking Section -->
+    <div id="map" class="map"></div>
+    <div class="buttons">
+      <button type="button" @click="startTrip" :disabled="tracking">Start Trip</button>
+      <button type="button" @click="endTrip" :disabled="!tracking">End Trip</button>
+    </div>
+
+    <!-- Manual Car Form -->
+    <form @submit.prevent="calculateEmission">
+
+      <label>Distance per Trip (km):</label>
+      <input v-model.number="km" type="number" min="0" readonly />
+
+
       <label>Trips per Week:</label>
       <input v-model.number="trips" type="number" min="0" />
 
-      <!-- Extra Load -->
       <label>Extra Load:</label>
       <select v-model="extraLoadType">
         <option value="none">None</option>
@@ -21,21 +29,21 @@
         <option value="trailer-heavy">Trailer (Heavy)</option>
       </select>
 
-      <!-- Car Make -->
       <label>Car Make:</label>
       <select v-model="selectedMake" @change="fetchModels">
         <option disabled value="">Select Make</option>
-        <option v-for="make in makes || []" :key="make.id" :value="make.id">
-          {{ make.data.attributes.name }}
+        <option v-for="make in makes || []" :key="make.make" :value="make.make">
+          {{ make.make }}
         </option>
       </select>
 
-      <!-- Car Model -->
       <label>Car Model:</label>
       <select v-model="selectedModel">
         <option disabled value="">Select Model</option>
-        <option v-for="model in models || []" :key="model.id" :value="model.id">
-          {{ model.attributes.name }}
+
+        <option v-for="model in models || []" :key="model.model" :value="model.model">
+          {{ model.model }}
+
         </option>
       </select>
 
@@ -57,6 +65,8 @@
 </template>
 
 <script>
+  import L from "leaflet";
+
   export default {
     data() {
       return {
@@ -70,18 +80,86 @@
         emissionPerTrip: null,
         emissionPerWeek: null,
         emissionPerYear: null,
-        loading: false
+        loading: false,
+
+        // Leaflet tracking
+        tracking: false,
+        watchId: null,
+        path: [],
+        map: null,
+        polyline: null
       };
     },
     async mounted() {
       localStorage.removeItem("carTripDistance");
       await this.fetchMakes();
+      this.loadMap();
     },
     methods: {
+      // === LIVE TRACKING ===
+      startTrip() {
+        this.path = [];
+        this.km = 0;
+        this.tracking = true;
+
+        this.watchId = navigator.geolocation.watchPosition(
+          this.trackPosition,
+          err => alert("Location error: " + err.message),
+          { enableHighAccuracy: true }
+        );
+      },
+      endTrip() {
+        this.tracking = false;
+        if (this.watchId) navigator.geolocation.clearWatch(this.watchId);
+
+        // Final distance calculation
+        let total = 0;
+        for (let i = 1; i < this.path.length; i++) {
+          const prev = L.latLng(this.path[i - 1]);
+          const curr = L.latLng(this.path[i]);
+          total += prev.distanceTo(curr);
+        }
+        const kmValue = (total / 1000).toFixed(2);
+        this.km = parseFloat(kmValue);
+        localStorage.setItem("carTripDistance", kmValue);
+      },
+      trackPosition(pos) {
+        const latlng = [pos.coords.latitude, pos.coords.longitude];
+        this.path.push(latlng);
+
+        if (this.map) {
+          const leafletLatLng = L.latLng(latlng);
+          L.marker(leafletLatLng).addTo(this.map);
+          this.polyline.addLatLng(leafletLatLng);
+          this.map.panTo(leafletLatLng);
+        }
+
+        // live update distance
+        let total = 0;
+        for (let i = 1; i < this.path.length; i++) {
+          const prev = L.latLng(this.path[i - 1]);
+          const curr = L.latLng(this.path[i]);
+          total += prev.distanceTo(curr);
+        }
+        this.km = parseFloat((total / 1000).toFixed(2));
+      },
+      loadMap() {
+        navigator.geolocation.getCurrentPosition(pos => {
+          const center = [pos.coords.latitude, pos.coords.longitude];
+          this.map = L.map("map").setView(center, 15);
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "© OpenStreetMap"
+          }).addTo(this.map);
+          this.polyline = L.polyline([], { color: "red" }).addTo(this.map);
+        });
+      },
+
+      // === API CALLS ===
       async fetchMakes() {
         try {
-          const res = await fetch("https://emissionscalculatorbackend-2.onrender.com/api/emissions/car/makes");
-          this.makes = await res.json();
+          const res = await fetch("http://136.186.108.171/api/emissions/car/makes");
+          const result = await res.json();
+          this.makes = result.data || [];
         } catch (err) {
           console.error(err);
           alert("Failed to load car makes");
@@ -89,8 +167,9 @@
       },
       async fetchModels() {
         try {
-          const res = await fetch(`https://emissionscalculatorbackend-2.onrender.com/api/emissions/car/models/${this.selectedMake}`);
-          this.models = await res.json();
+          const res = await fetch(`http://136.186.108.171/api/emissions/car/models/${this.selectedMake}`);
+          const result = await res.json();
+          this.models = result.data || [];
         } catch (err) {
           console.error(err);
           alert("Failed to load car models");
@@ -103,22 +182,26 @@
         }
         try {
           this.loading = true;
-          const res = await fetch("https://emissionscalculatorbackend-2.onrender.com/api/emissions/car/emissions", {
+          const res = await fetch("http://136.186.108.171/api/emissions/car/emissions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              vehicleModelId: this.selectedModel,
-              distanceKm: this.km,
-              trips: this.trips,
-              extraLoadType: this.extraLoadType
+
+              vehicleMake: this.selectedMake,
+              vehicleModel: this.selectedModel,
+              distanceKm: this.km
+
             })
           });
           //recieving calculated response from backend
           const data = await res.json();
 
-          this.emissionPerTrip = data.emissionPerTrip;
-          this.emissionPerWeek = data.emissionPerWeek;
-          this.emissionPerYear = data.emissionPerYear;
+          const emissionKg = data.data.co2e_kg;
+
+          this.emissionPerTrip = emissionKg / 1000;
+          this.emissionPerWeek = this.emissionPerTrip * this.trips;
+          this.emissionPerYear = this.emissionPerWeek * 52;
+
         } catch (err) {
           console.error(err);
           alert("Error calculating emissions");
@@ -137,13 +220,15 @@
         try {
           const payload = {
             transportMode: "car",
-            vehicleModelId: this.selectedModel,
+            vehicleMake: this.selectedMake,
+            vehicleModel: this.selectedModel,
             distanceKm: this.km,
             trips: this.trips,
-            extraLoad: this.extraLoadType
+            extraLoad: this.extraLoadType,
+            emissionKg: this.emissionPerTrip * 1000
           };
 
-          const res = await fetch("https://emissionscalculatorbackend-2.onrender.com/api/emissions/log", {
+          const res = await fetch("http://136.186.108.171/api/emissions/log", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -170,11 +255,18 @@
 
 <style scoped>
   .form-container {
-    max-width: 500px;
-    margin: 2rem auto;
+    max-width: 600px;
+    margin: auto;
     padding: 2rem;
     background: #f9f9f9;
     border-radius: 10px;
+  }
+
+  .map {
+    height: 300px;
+    width: 100%;
+    margin-bottom: 1rem;
+    border-radius: 8px;
   }
 
   form {
@@ -193,7 +285,7 @@
   }
 
   button {
-    margin-top: 1.5rem;
+    margin-top: 1rem;
     padding: 0.75rem;
     background: #007bff;
     color: white;
@@ -208,5 +300,14 @@
     border: 1px solid #007acc;
     border-radius: 8px;
     color: #00457c;
+  }
+
+  .buttons {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  body.dark label {
+    color: #000000 !important;
   }
 </style>

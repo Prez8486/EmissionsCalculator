@@ -41,28 +41,32 @@ export default {
       this.message = 'Account created!';
       this.showToast = true;
 
-      setTimeout(() => {
-        this.message = '';
-        this.showToast = false;
-        this.$router.replace({ path: this.$route.path }); // clear ?created=true
-      }, 5000);
-    }
-  },
-  methods: {
-    async login() {
-      this.loading = true;
-      try {
-        const res = await fetch('https://emissionscalculatorbackend-2.onrender.com/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: this.email, password: this.password })
-        });
-        const data = await res.json();
-        if (data.token) {
-          localStorage.setItem('token', data.token);
-          this.$router.push('/home');
-        } else {
-          this.message = data.error || "Login failed.";
+
+        setTimeout(() => {
+          this.message = '';
+          this.showToast = false;
+          this.$router.replace({ path: this.$route.path }); // clear the ?created=true
+        }, 5000);
+      }
+    },
+    methods: {
+      async login() {
+        try {
+          const res = await fetch('http://136.186.108.171/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: this.email, password: this.password })
+          });
+          const data = await res.json();
+          if (data.token) {
+            localStorage.setItem('token', data.token);
+            this.$router.push('/home');
+          } else {
+            this.message = data.error || "Login failed.";
+          }
+        } catch (err) {
+          this.message = "Login request failed.";
+
         }
       } catch (err) {
         this.message = "Login request failed.";
