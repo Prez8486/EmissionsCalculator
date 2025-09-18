@@ -11,7 +11,7 @@ import Register from '../components/Register.vue';
 import History from '../components/History.vue';
 import Leaderboard from '../components/UserLeaderboard.vue';
 import CarTrip from '../components/CarTrip.vue';
-import TestTrip from '../components/TestTrip.vue';
+import BaseTransportForm from '@/components/BaseTransportForm.vue';
 
 const routes = [
   { path: '/', component: Login },
@@ -27,7 +27,11 @@ const routes = [
   { path: '/leaderboard', component: Leaderboard },
   { path: '/history', component: History },
   { path: '/cartrip', component: CarTrip },
-  { path: '/trips', component: TestTrip }
+  {
+    path: '/base-form',
+    component: BaseTransportForm,
+    props: route => ({ transportMode: route.query.mode || '' })
+  }
 ];
 
 export default createRouter({

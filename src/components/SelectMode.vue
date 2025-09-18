@@ -3,8 +3,13 @@
     <div v-if="!isNative" class="container">
       <h2>Select Transport Mode</h2>
       <div class="transport-grid">
-        <router-link v-for="mode in modes" :key="mode.value" class="btn" :to="mode.route">
-          <i :class="['fas', mode.icon, 'icon']"></i>
+        <router-link
+          v-for="mode in modes"
+          :key="mode.value"
+          class="btn"
+          :to="{ path: '/base-form', query: { mode: mode.value } }"
+        >
+        <i :class="['fas', mode.icon, 'icon']"></i>
           <span class="desc">{{ mode.label }}</span>
         </router-link>
       </div>
@@ -30,7 +35,10 @@
         </button>
       </div>
 
-      <router-link :to="{path: currentMode.route, query: { mode: currentMode.value }}" class="select-button" >
+      <router-link
+        :to="{ path: '/base-form', query: { mode: currentMode.value } }"
+        class="select-button"
+      >
         Select Trip
       </router-link>
     </div>
@@ -46,11 +54,16 @@ export default {
       isNative: false,
       currentIndex: 0,
       modes: [
-        { value: 'car', label: 'Add a car trip', icon: 'fa-car', route: '/form/car' },
-        { value: 'bus', label: 'Add a bus journey', icon: 'fa-bus', route: '/form/bus' },
-        { value: 'tram', label: 'Add a tram ride', icon: 'fa-subway', route: '/form/tram' },
-        { value: 'metro', label: 'Add a metro/subway trip', icon: 'fa-train', route: '/form/metro' },
-        { value: 'flight', label: 'Log a flight', icon: 'fa-plane', route: '/form/flight' },
+        //{ value: 'car', label: 'Add a car trip', icon: 'fa-car', route: '/form/car' },
+        //{ value: 'bus', label: 'Add a bus journey', icon: 'fa-bus', route: '/form/bus' },
+        //{ value: 'tram', label: 'Add a tram ride', icon: 'fa-subway', route: '/form/tram' },
+        //{ value: 'metro', label: 'Add a metro/subway trip', icon: 'fa-train', route: '/form/metro' },
+        //{ value: 'flight', label: 'Log a flight', icon: 'fa-plane', route: '/form/flight' },
+        { value: 'car', label: 'Add a car trip', icon: 'fa-car' },
+        { value: 'bus', label: 'Add a bus journey', icon: 'fa-bus' },
+        { value: 'tram', label: 'Add a tram ride', icon: 'fa-subway' },
+        { value: 'metro', label: 'Add a metro/subway trip', icon: 'fa-train' },
+        { value: 'flight', label: 'Log a flight', icon: 'fa-plane' }
       ]
     };
   },

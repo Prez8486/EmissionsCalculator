@@ -8,8 +8,8 @@
         <router-link to="/history">History</router-link>
         <router-link to="/leaderboard">Leaderboard</router-link>
         <button @click="showSettings = true" class="settings-btn">Settings</button>
-        <!-- <router-link to="/select-mode" class="website-addtrip">+</router-link> -->
-        <router-link to="/trips" class="website-addtrip">+</router-link>
+        <router-link to="/select-mode" class="website-addtrip">+</router-link>
+        <!-- <router-link to="/base-form" class="website-plus-button">-</router-link> -->
       </nav>
     </header>
 
@@ -48,6 +48,11 @@
         <div class="nav-icon">⚙️</div>
         <span class="nav-label">Settings</span>
       </button>
+
+      <router-link to="/base-form" class="nav-item" active-class="active">
+        <div class="nav-icon">🏆</div>
+        <span class="nav-label">Testing Modes</span>
+      </router-link>
     </nav>
 
     <!-- Settings Modal/Overlay -->

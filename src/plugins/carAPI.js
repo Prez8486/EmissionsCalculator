@@ -125,4 +125,9 @@ export class CarAPIPlugin {
   getMakes() {
     return this.makes;
   }
+
+    // Get makes list (with caching)
+  getModels() {
+    return this.models;
+  }
 }
