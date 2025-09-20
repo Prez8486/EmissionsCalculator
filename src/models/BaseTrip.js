@@ -10,6 +10,11 @@ export class BaseTrip {
     this.userId = userId;
     this.options = options;
 
+    this.config = getTransportConfig(transportMode);
+    if (!this.config) {
+      throw new Error(`Unsupported transport mode: ${transportMode}`);
+    }
+
     //Trip State
     this.isActive = false;
     this.isCompleted = false;
@@ -111,7 +116,7 @@ export class BaseTrip {
         headers.Authorization = `Bearer ${token}`;
       }
 
-      const response = await fetch(`http://136.186.108.171/api${this.config.api.emissions}`, {
+      const response = await fetch(`http://136.186.108.171${this.config.api.emissions}`, {
         method: this.config.api.method,
         headers,
         body: JSON.stringify(payload)

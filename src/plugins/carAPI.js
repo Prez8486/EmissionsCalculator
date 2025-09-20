@@ -126,8 +126,29 @@ export class CarAPIPlugin {
     return this.makes;
   }
 
-    // Get makes list (with caching)
-  getModels() {
+  // Get models for current make
+  getModels(make = null) {
+    if (make) {
+      return this.cache.models.get(make) || [];
+    }
     return this.models;
+  }
+
+  // Check if loading is in progress
+  isLoading() {
+    return this.loading;
+  }
+
+  // Clear cache
+  clearCache() {
+    this.cache.makes = null;
+    this.cache.models.clear();
+  }
+
+  // Cleanup
+  destroy() {
+    this.clearCache();
+    this.makes = [];
+    this.models = [];
   }
 }

@@ -5,7 +5,7 @@ export const transportConfig = {
 
     //API configuration
     api: {
-      emissions: 'emissioins/car/emissions',
+      emissions: '/emissions/car/emissions',
       method: 'POST'
     },
 
@@ -83,12 +83,12 @@ export const transportConfig = {
     icon: "✈️",
 
     api:{
-      emissions: 'emissioins/flight/emissions',
+      emissions: '/emissions/flight/emissions',
       method: 'POST'
     },
 
     fields: {
-      passengets: {
+      passengers: {
         type: 'number',
         label: 'Number of Passengers',
         required: true,
@@ -152,7 +152,7 @@ export const transportConfig = {
     icon: "🚌",
 
     api: {
-      emissions: '/emissions/bus/emissions',
+      emissions: '/api/emissions/bus/emissions',
       method: 'POST'
     },
 

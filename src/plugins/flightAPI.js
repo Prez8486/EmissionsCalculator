@@ -72,4 +72,21 @@ export class FlightAPIPlugin {
     }
     return this.airports;
   }
+
+  // Clear search cache
+  clearCache() {
+    this.cache.clear();
+  }
+
+  // Check if search is in progress
+  isLoading() {
+    return this.loading;
+  }
+
+  // Cleanup
+  destroy() {
+    this.clearCache();
+    this.airports = [];
+    this.loading = false;
+  }
 }
