@@ -5,7 +5,7 @@ export const transportConfig = {
 
     //API configuration
     api: {
-      emissions: '/emissions/car/emissions',
+      emissions: '/api/emissions/car/emissions',
       method: 'POST'
     },
 
@@ -83,7 +83,7 @@ export const transportConfig = {
     icon: "✈️",
 
     api:{
-      emissions: '/emissions/flight/emissions',
+      emissions: '/api/emissions/flight/emissions',
       method: 'POST'
     },
 
@@ -197,7 +197,7 @@ export const transportConfig = {
     icon: '🚇',
 
     api: {
-      emissions: '/emissions/metro/emissions',
+      emissions: '/api/emissions/metro/emissions',
       method: 'POST'
     },
 
@@ -242,7 +242,7 @@ export const transportConfig = {
     icon: '🚋',
 
     api: {
-      emissions: '/emissions/tram/emissions',
+      emissions: '/api/emissions/tram/emissions',
       method: 'POST'
     },
 
