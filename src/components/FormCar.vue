@@ -404,7 +404,7 @@
       transform: translateX(22px);
     }
 
-  body.dark label {
+  body.dark label switch span {
     color: #000 !important;
   }
 </style>
