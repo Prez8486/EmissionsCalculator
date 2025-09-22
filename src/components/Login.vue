@@ -36,7 +36,7 @@
     methods: {
       async login() {
         try {
-          const res = await fetch('http://136.186.108.171/api/auth/login', {
+          const res = await fetch('https://emissionscalculatorbackend.duckdns.org/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: this.email, password: this.password })

@@ -91,7 +91,7 @@ export default {
   async mounted() {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://136.186.108.171/api/emissions/history', {
+      const res = await fetch('https://emissionscalculatorbackend.duckdns.org/api/emissions/history', {
         headers: {
           Authorization: `Bearer ${token}`
         }
