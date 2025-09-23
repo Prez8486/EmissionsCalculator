@@ -9,22 +9,26 @@
     <PackageJsonScriptsBuild Condition="$(PackageJsonScriptsBuild) == ''">vite build</PackageJsonScriptsBuild>
     <PackageJsonScriptsPreview Condition="$(PackageJsonScriptsPreview) == ''">vite preview</PackageJsonScriptsPreview>
     <PackageJsonScriptsLint Condition="$(PackageJsonScriptsLint) == ''">eslint . --fix</PackageJsonScriptsLint>
-    <PackageJsonDependenciesCapacitorAndroid Condition="$(PackageJsonDependenciesCapacitorAndroid) == ''">^7.2.0</PackageJsonDependenciesCapacitorAndroid>
-    <PackageJsonDependenciesCapacitorCli Condition="$(PackageJsonDependenciesCapacitorCli) == ''">^7.2.0</PackageJsonDependenciesCapacitorCli>
-    <PackageJsonDependenciesCapacitorCore Condition="$(PackageJsonDependenciesCapacitorCore) == ''">^7.2.0</PackageJsonDependenciesCapacitorCore>
+    <PackageJsonDependenciesCapacitorAndroid Condition="$(PackageJsonDependenciesCapacitorAndroid) == ''">^7.4.3</PackageJsonDependenciesCapacitorAndroid>
+    <PackageJsonDependenciesCapacitorCli Condition="$(PackageJsonDependenciesCapacitorCli) == ''">^7.4.3</PackageJsonDependenciesCapacitorCli>
+    <PackageJsonDependenciesCapacitorCore Condition="$(PackageJsonDependenciesCapacitorCore) == ''">^7.4.3</PackageJsonDependenciesCapacitorCore>
+    <PackageJsonDependenciesCapacitorGeolocation Condition="$(PackageJsonDependenciesCapacitorGeolocation) == ''">^7.1.2</PackageJsonDependenciesCapacitorGeolocation>
+    <PackageJsonDependenciesPopperjsCore Condition="$(PackageJsonDependenciesPopperjsCore) == ''">^2.11.8</PackageJsonDependenciesPopperjsCore>
     <PackageJsonDependenciesBootstrap Condition="$(PackageJsonDependenciesBootstrap) == ''">^5.3.6</PackageJsonDependenciesBootstrap>
-    <PackageJsonDependenciesChartJs Condition="$(PackageJsonDependenciesChartJs) == ''">^4.4.9</PackageJsonDependenciesChartJs>
+    <PackageJsonDependenciesChartJs Condition="$(PackageJsonDependenciesChartJs) == ''">^3.9.1</PackageJsonDependenciesChartJs>
     <PackageJsonDependenciesChartjsAdapterDateFns Condition="$(PackageJsonDependenciesChartjsAdapterDateFns) == ''">^3.0.0</PackageJsonDependenciesChartjsAdapterDateFns>
     <PackageJsonDependenciesChartjsPluginDatalabels Condition="$(PackageJsonDependenciesChartjsPluginDatalabels) == ''">^2.2.0</PackageJsonDependenciesChartjsPluginDatalabels>
-    <PackageJsonDependenciesVue Condition="$(PackageJsonDependenciesVue) == ''">^3.5.13</PackageJsonDependenciesVue>
-    <PackageJsonDependenciesVueChartjs Condition="$(PackageJsonDependenciesVueChartjs) == ''">^5.3.2</PackageJsonDependenciesVueChartjs>
-    <PackageJsonDependenciesVueRouter Condition="$(PackageJsonDependenciesVueRouter) == ''">^4.5.0</PackageJsonDependenciesVueRouter>
+    <PackageJsonDependenciesDateFns Condition="$(PackageJsonDependenciesDateFns) == ''">^4.1.0</PackageJsonDependenciesDateFns>
+    <PackageJsonDependenciesLeaflet Condition="$(PackageJsonDependenciesLeaflet) == ''">^1.9.4</PackageJsonDependenciesLeaflet>
+    <PackageJsonDependenciesVue Condition="$(PackageJsonDependenciesVue) == ''">^3.5.16</PackageJsonDependenciesVue>
+    <PackageJsonDependenciesVueChartjs Condition="$(PackageJsonDependenciesVueChartjs) == ''">^4.1.2</PackageJsonDependenciesVueChartjs>
+    <PackageJsonDependenciesVueRouter Condition="$(PackageJsonDependenciesVueRouter) == ''">^4.5.1</PackageJsonDependenciesVueRouter>
     <PackageJsonDevdependenciesEslintJs Condition="$(PackageJsonDevdependenciesEslintJs) == ''">^9.22.0</PackageJsonDevdependenciesEslintJs>
-    <PackageJsonDevdependenciesVitejsPluginVue Condition="$(PackageJsonDevdependenciesVitejsPluginVue) == ''">^5.2.3</PackageJsonDevdependenciesVitejsPluginVue>
+    <PackageJsonDevdependenciesVitejsPluginVue Condition="$(PackageJsonDevdependenciesVitejsPluginVue) == ''">^5.2.4</PackageJsonDevdependenciesVitejsPluginVue>
     <PackageJsonDevdependenciesEslint Condition="$(PackageJsonDevdependenciesEslint) == ''">^9.22.0</PackageJsonDevdependenciesEslint>
     <PackageJsonDevdependenciesEslintPluginVue Condition="$(PackageJsonDevdependenciesEslintPluginVue) == ''">~10.0.0</PackageJsonDevdependenciesEslintPluginVue>
     <PackageJsonDevdependenciesGlobals Condition="$(PackageJsonDevdependenciesGlobals) == ''">^16.0.0</PackageJsonDevdependenciesGlobals>
-    <PackageJsonDevdependenciesVite Condition="$(PackageJsonDevdependenciesVite) == ''">^6.3.4</PackageJsonDevdependenciesVite>
+    <PackageJsonDevdependenciesVite Condition="$(PackageJsonDevdependenciesVite) == ''">^6.3.5</PackageJsonDevdependenciesVite>
     <PackageJsonDevdependenciesVitePluginVueDevtools Condition="$(PackageJsonDevdependenciesVitePluginVueDevtools) == ''">^7.7.2</PackageJsonDevdependenciesVitePluginVueDevtools>
   </PropertyGroup>
 </Project>

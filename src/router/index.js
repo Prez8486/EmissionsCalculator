@@ -13,7 +13,8 @@ import TripModeSelection from '../components/TripModeSelection.vue';
 import TripTracking from '../components/TripTracking.vue';
 import TripSummary from '../components/TripSummary.vue';
 
-
+import CarTrip from '../components/CarTrip.vue';
+import ChangePassword from '../components/ChangePassword.vue';
 const routes = [
   { path: '/', component: Login },
   { path: '/login', component: Login },
@@ -26,9 +27,8 @@ const routes = [
   { path: '/form/flight', component: FormFlight },
   { path: '/leaderboard', component: Leaderboard },
   { path: '/history', component: History },
-  { path: '/trip-tracking', name: 'TripTracking', component: TripTracking },
-  { path: '/trip-mode-selection', component: TripModeSelection },
-  { path: '/trip-summary', name: 'TripSummary', component: TripSummary.vue}
+  { path: '/cartrip', component: CarTrip },
+  { path: '/changepassword', component: ChangePassword },
 ];
 
 export default createRouter({

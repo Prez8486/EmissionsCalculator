@@ -1,10 +1,14 @@
 <template>
   <div class="form-container">
     <h2>Tram Emission Calculator</h2>
-    <form>
-      <label>Trip Tram Distance (km):</label>
+    <form @submit.prevent="calculateEmission">
+      <label>Tram Distance Travelled (km):</label>
       <input v-model.number="km" type="number" min="0" />
+      <button type="submit" :disabled="loading">
+        {{ loading ? "Calculating..." : "Calculate" }}
+      </button>
     </form>
+
     <div v-if="emission !== null" class="result">
       <h3>Emissions Summary</h3>
       <p><strong>This Trip:</strong> {{ emission.toFixed(3) }} tonnes CO₂</p>
@@ -16,57 +20,71 @@
 <script>
   export default {
     data() {
-      return { km: 0, emission: null };
-    },
-    watch: {
-      km: 'calculateEmission'
+      return {
+        km: 0,
+        emission: null,
+        loading: false
+      };
     },
     methods: {
-      calculateEmission() {
-        const factor = 0.00007;
-        this.emission = this.km * factor;
-      },
-      save() {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          alert("You must be logged in to save emissions.");
-          this.$router.push('/login');
+      async calculateEmission() {
+        if (!this.km) {
+          alert("Please enter distance.");
           return;
         }
-
-        const payload = {
-          transportMode: 'tram',
-          distanceKm: this.km
-        };
-
-        fetch("https://emissionscalculatorbackend.onrender.com/api/emissions/log", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${ token }`
-          },
-      body: JSON.stringify(payload)
-    })
-          .then(res => res.json())
-      .then(data => {
-        if (data.message) {
-          alert("Tram trip saved to backend!");
-          this.$router.push('/home');
-        } else {
-          alert("Failed to save: " + data.error);
+        try {
+          this.loading = true;
+          const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/tram/emissions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ distanceKm: this.km })
+          });
+          const data = await res.json();
+          this.emission = (data.emissionKg || 0) / 1000; // backend gives kg → convert to tonnes
+        } catch (err) {
+          console.error(err);
+          alert("Error calculating tram emissions");
+        } finally {
+          this.loading = false;
         }
-      })
-      .catch(err => {
-        console.error(err);
-        alert("Error saving emission log.");
-      });
-  }
-    },
-  mounted() {
-    this.calculateEmission();
-  }
+      },
+      async save() {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          alert("You must be logged in to save emissions.");
+          this.$router.push("/login");
+          return;
+        }
+        try {
+          const payload = {
+            transportMode: "tram",
+            distanceKm: this.km,
+            emissionKg: this.emission * 1000 // already calculated, send to backend
+          };
+          const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/log", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (data.message) {
+            alert("Tram trip saved to backend!");
+            this.$router.push("/home");
+          } else {
+            alert("Failed to save: " + data.error);
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Error saving emission log.");
+        }
+      }
+    }
   };
 </script>
+
 
 <style scoped>
   .form-container {
@@ -107,5 +125,8 @@
     border: 1px solid #007acc;
     border-radius: 8px;
     color: #00457c;
+  }
+  body.dark label {
+    color: #000000 !important;
   }
 </style>
