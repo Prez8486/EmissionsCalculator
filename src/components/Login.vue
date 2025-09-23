@@ -66,12 +66,8 @@ export default {
           }
         } catch (err) {
           this.message = "Login request failed.";
-
-        }
-      } catch (err) {
-        this.message = "Login request failed.";
-      } finally {
-        this.loading = false; // ✅ Reset button state
+        } finally {
+          this.loading = false; // ✅ Reset button state
       }
     }
   }

@@ -8,6 +8,7 @@
         <router-link to="/home">Home</router-link>
         <router-link to="/history">History</router-link>
         <router-link to="/leaderboard">Leaderboard</router-link>
+        <router-link to="/Comparison">Comparison</router-link>
         <button @click="showSettings = true" class="settings-btn">Settings</button>
         <router-link to="/select-mode" class="website-addtrip">+</router-link>
       </nav>
