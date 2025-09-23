@@ -82,7 +82,7 @@
                 <div><strong>Class:</strong> {{ r.flightClass || 'Economy' }}</div>
               </template>
               <template v-else>
-                <div><strong>Distance:</strong> {{ r.distanceKm }} km/week</div>
+                <div><strong>Distance:</strong> {{ r.distanceKm }} km</div>
               </template>
             </td>
             <td class="emissions-cell">
@@ -179,33 +179,95 @@
         scales: {
           y: {
             beginAtZero: true,
-            title: {
-              display: true,
-              text: 'Emissions (tonnes)'
-            }
+            title: { display: true, text: 'Emissions (tonnes)' }
           }
         },
-        plugins: {
-          legend: { display: true },
-          title: { display: false }
-        }
+        plugins: { legend: { display: true }, title: { display: false } }
       },
       chartData() {
         if (!this.selected) return null;
         const r = this.selected;
-        const distance = r.distanceKm || 0;
+
+        // 🚗 Car
         if (r.transportMode.toLowerCase() === 'car') {
-          const efficiency = { toyota: 7.5, honda: 7.2, ford: 8.5 };
+          const distance = r.distanceKm || 0;
+          const efficiency = { Toyota: 7.5, Honda: 7.2, Ford: 8.5 };
           const factors = { unleaded91: 2.31 };
           return {
             labels: Object.keys(efficiency),
             datasets: [{
               label: 'Car Emissions (tonnes)',
-              data: Object.entries(efficiency).map(([k, v]) => ((v / 100) * distance * factors.unleaded91 / 1000).toFixed(4)),
+              data: Object.entries(efficiency).map(([k, v]) =>
+                ((v / 100) * distance * factors.unleaded91 / 1000).toFixed(4)
+              ),
               backgroundColor: ['#42A5F5', '#66BB6A', '#FFA726']
             }]
           };
         }
+
+        // ✈ Flight
+        if (r.transportMode.toLowerCase() === 'flight') {
+          const flights = r.flights || 1;
+          const hours = r.hoursPerFlight || 1;
+          const airlineFactors = {
+            Generic: 0.09, Emirates: 0.10, AirIndia: 0.11, Qantas: 0.095, Ryanair: 0.085
+          };
+          const multiplier = { economy: 1, premium: 1.2, business: 1.5, first: 2 };
+          const currentClass = (r.flightClass || 'economy').toLowerCase();
+          return {
+            labels: Object.keys(airlineFactors),
+            datasets: [{
+              label: 'Flight Emissions (tonnes)',
+              data: Object.entries(airlineFactors).map(([airline, factor]) =>
+                (flights * hours * factor * (multiplier[currentClass] || 1)).toFixed(4)
+              ),
+              backgroundColor: ['#1E88E5', '#43A047', '#FB8C00', '#8E24AA', '#E53935']
+            }]
+          };
+        }
+
+        // 🚌 Bus
+        if (r.transportMode.toLowerCase() === 'bus') {
+          const distance = r.distanceKm || 0;
+          const busTypes = { CityBus: 0.0001, Coach: 0.00008 };
+          return {
+            labels: Object.keys(busTypes),
+            datasets: [{
+              label: 'Bus Emissions (tonnes)',
+              data: Object.values(busTypes).map(f => (distance * f).toFixed(4)),
+              backgroundColor: ['#29B6F6', '#8BC34A']
+            }]
+          };
+        }
+
+        // 🚋 Tram
+        if (r.transportMode.toLowerCase() === 'tram') {
+          const distance = r.distanceKm || 0;
+          const tramTypes = { LightRail: 0.00007, HeavyTram: 0.00009 };
+          return {
+            labels: Object.keys(tramTypes),
+            datasets: [{
+              label: 'Tram Emissions (tonnes)',
+              data: Object.values(tramTypes).map(f => (distance * f).toFixed(4)),
+              backgroundColor: ['#FFCA28', '#7E57C2']
+            }]
+          };
+        }
+
+        // 🚇 Metro
+        if (r.transportMode.toLowerCase() === 'metro') {
+          const distance = r.distanceKm || 0;
+          const metroTypes = { Metro: 0.00006, SuburbanRail: 0.00008 };
+          return {
+            labels: Object.keys(metroTypes),
+            datasets: [{
+              label: 'Metro Emissions (tonnes)',
+              data: Object.values(metroTypes).map(f => (distance * f).toFixed(4)),
+              backgroundColor: ['#26A69A', '#AB47BC']
+            }]
+          };
+        }
+
         return null;
       }
     },
@@ -219,41 +281,34 @@
       async fetchRecords() {
         try {
           const token = localStorage.getItem('token');
-          const res = await fetch('http://136.186.108.171/api/emissions/history', {
-            headers: { Authorization: `Bearer ${ token }` }
-        });
-
-        if (!res.ok) {
-          if (res.status === 401 || res.status === 403) {
-            console.log('Token invalid, clearing and redirecting to login');
-            localStorage.removeItem('token');
-            this.$router.push({
-              path: '/login',
-              query: { redirect: '/history' }
-            });
-            return;
+          const res = await fetch('https://emissionscalculatorbackend.duckdns.org/api/emissions/history', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (!res.ok) {
+            if (res.status === 401 || res.status === 403) {
+              localStorage.removeItem('token');
+              this.$router.push({ path: '/login', query: { redirect: '/history' } });
+              return;
+            }
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
           }
-          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          const data = await res.json();
+          this.records = data.records || [];
+        } catch (err) {
+          console.error('Failed to fetch records:', err);
+          this.error = err.message;
+          this.records = [];
+        } finally {
+          this.loading = false;
         }
-
-        const data = await res.json();
-        this.records = data.records || [];
-        console.log('Fetched records:', this.records.length);
-
-      } catch (err) {
-        console.error('Failed to fetch records:', err);
-        this.error = err.message;
-        this.records = [];
-      } finally {
-        this.loading = false;
       }
+    },
+    async mounted() {
+      await this.fetchRecords();
     }
-  },
-  async mounted() {
-    await this.fetchRecords();
-  }
-};
+  };
 </script>
+
 <style scoped>
   .history-page {
     padding: 1rem;
@@ -274,6 +329,7 @@
   .chart-section {
     margin-bottom: 2rem;
   }
+
   .filters-section,
   .table-section {
     background: #ffffff;
@@ -285,7 +341,6 @@
 
   .chart-container.fixed-chart {
     min-height: 400px;
-
   }
 
   .filters {
@@ -463,15 +518,18 @@
       align-items: flex-start;
     }
   }
+
   #map {
     height: 400px !important;
     width: 100% !important;
     border-radius: 8px;
     margin-bottom: 1rem;
   }
-  body.dark h2{
+
+  body.dark h2 {
     color: #ffffff !important;
   }
+
   body.dark .monthly-title {
     color: #ffffff !important;
   }

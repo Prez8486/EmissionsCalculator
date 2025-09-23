@@ -34,7 +34,7 @@
         }
         try {
           this.loading = true;
-          const res = await fetch("http://136.186.108.171/api/emissions/tram/emissions", {
+          const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/tram/emissions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ distanceKm: this.km })
@@ -61,7 +61,7 @@
             distanceKm: this.km,
             emissionKg: this.emission * 1000 // already calculated, send to backend
           };
-          const res = await fetch("http://136.186.108.171/api/emissions/log", {
+          const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/log", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

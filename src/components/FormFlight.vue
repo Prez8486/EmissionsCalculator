@@ -79,7 +79,7 @@
         this.$router.push('/login');
         return;
       }
-      const res = await fetch('http://136.186.108.171/api/emissions/flightinfo', {
+      const res = await fetch('https://emissionscalculatorbackend.duckdns.org/api/emissions/flightinfo', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +104,7 @@
       try {
         const keyword = type === 'from' ? this.FromKeyword : this.ToKeyword;
         if (!keyword || keyword.length < 3) return; // wait until 3 chars
-        const res = await fetch(`http://136.186.108.171/api/emissions/air/airports?keyword=${keyword}`);
+        const res = await fetch(`https://emissionscalculatorbackend.duckdns.org/api/emissions/air/airports?keyword=${keyword}`);
         const result = await res.json();
         const airports = result.data || [];
         if (type === 'from') {
@@ -125,7 +125,7 @@
         }
         try {
           this.loading = true;
-          const res = await fetch("http://136.186.108.171/api/emissions/flight/emissions", {
+          const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/flight/emissions", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -172,7 +172,7 @@
           date: new Date().toISOString()
         };
 
-        fetch("http://136.186.108.171/api/emissions/log", {
+        fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/log", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

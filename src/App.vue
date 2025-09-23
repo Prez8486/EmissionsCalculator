@@ -35,7 +35,7 @@
       </router-link>
 
       <!-- Center Add Trip Button -->
-      <router-link to="/select-mode" class="nav-item center-button" active-class="active">
+      <router-link to="/trip-mode-selection" class="nav-item center-button" active-class="active">
         <div class="center-icon">+</div>
       </router-link>
 
@@ -70,6 +70,10 @@
           <button @click="toggleDarkMode" class="settings-option">
             <span class="option-icon">🌙</span>
             <span>{{ darkMode ? 'Light Mode' : 'Dark Mode' }}</span>
+          </button>
+          <button @click="$router.push('/changepassword')" class="settings-option">
+            <span class="option-icon">🔑</span>
+            <span>Change Password</span>
           </button>
           <button class="settings-option" disabled>
             <span class="option-icon">📍</span>
@@ -123,6 +127,7 @@ import { Capacitor } from '@capacitor/core';
       }
     },
     mounted() {
+      console.log("Vue App mounted");
       this.isAndroid = /Android/i.test(navigator.userAgent);
     },
     watch: {

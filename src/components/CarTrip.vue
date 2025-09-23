@@ -270,7 +270,7 @@ import L from "leaflet";
         distanceKm: this.km,
       };
 
-        await fetch("http://136.186.108.171/api/emissions/log", {
+        await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/log", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
