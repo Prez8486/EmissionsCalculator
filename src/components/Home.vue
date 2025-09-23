@@ -21,11 +21,19 @@
         <div class="card-body">
           <p><strong>Date:</strong> {{ formatDate(lastTrip.date) }}</p>
           <p><strong>Mode:</strong> {{ lastTrip.transportMode || lastTrip.mode }}</p>
-          <p><strong>Distance:</strong> {{ lastTrip.distance }} km</p>
+
+          <p v-if="lastTrip.transportMode === 'car' || lastTrip.transportMode === 'bus' || lastTrip.transportMode === 'tram'">
+            <strong>Distance:</strong> {{ lastTrip.distanceKm }} km
+          </p>
+          <p v-else-if="lastTrip.transportMode === 'flight'">
+            <strong>Route:</strong> {{ lastTrip.fromAirport }} → {{ lastTrip.toAirport }}
+          </p>
           <p>
             <strong>Emissions:</strong>
-            {{ (parseFloat(lastTrip.emissionKg || lastTrip.emission) / 1000).toFixed(4) }} tonnes
+            {{ (parseFloat(lastTrip.emissionKg || lastTrip.emission) / 1000).toFixed(3) + ' tonnes ' }}
           </p>
+
+
         </div>
       </div>
     </div>
@@ -83,11 +91,11 @@ export default {
   async mounted() {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://emissionscalculatorbackend-3.onrender.com/api/emissions/history', {
+      const res = await fetch('http://136.186.108.171/api/emissions/history', {
         headers: {
           Authorization: `Bearer ${token}`
         }
-      })
+      });
       const data = await res.json();
       if (data.records) {
         this.records = data.records;

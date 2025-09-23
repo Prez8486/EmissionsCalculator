@@ -65,6 +65,10 @@
             <span class="option-icon">🌙</span>
             <span>{{ darkMode ? 'Light Mode' : 'Dark Mode' }}</span>
           </button>
+          <button @click="$router.push('/changepassword')" class="settings-option">
+            <span class="option-icon">🔑</span>
+            <span>Change Password</span>
+          </button>
           <button class="settings-option" disabled>
             <span class="option-icon">📍</span>
             <span>Location Settings (Coming Soon)</span>
@@ -113,7 +117,7 @@ import { Capacitor } from '@capacitor/core';
     },
     created() {
       this.checkAuth();
-      this.checkPlatform();
+      //this.checkPlatform();
       this.darkMode = localStorage.getItem('darkMode') === 'true';
       if (this.darkMode) {
         document.body.classList.add('dark');
