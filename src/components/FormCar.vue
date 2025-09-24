@@ -22,8 +22,10 @@
 
     <!-- Manual Car Form -->
     <form @submit.prevent="calculateEmission">
+
       <label>Distance per Trip (km):</label>
       <input v-model.number="km" type="number" min="0" readonly />
+
 
       <label>Trips per Week:</label>
       <input v-model.number="trips" type="number" min="0" />
@@ -49,8 +51,10 @@
       <label>Car Model:</label>
       <select v-model="selectedModel">
         <option disabled value="">Select Model</option>
+
         <option v-for="model in models || []" :key="model.model" :value="model.model">
           {{ model.model }}
+
         </option>
       </select>
 
@@ -235,17 +239,22 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+
               vehicleMake: this.selectedMake,
               vehicleModel: this.selectedModel,
               distanceKm: this.km
+
             })
           });
+          //recieving calculated response from backend
           const data = await res.json();
+
           const emissionKg = data.data.co2e_kg;
 
           this.emissionPerTrip = emissionKg / 1000;
           this.emissionPerWeek = this.emissionPerTrip * this.trips;
           this.emissionPerYear = this.emissionPerWeek * 52;
+
         } catch (err) {
           console.error(err);
           alert("Error calculating emissions");

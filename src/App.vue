@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+
     <!-- Header - simplified, no navigation -->
     <header v-if="!isAndroid && isLoggedIn" class="website-header">
       <h1>EcoHabit</h1>
@@ -7,13 +8,27 @@
         <router-link to="/home">Home</router-link>
         <router-link to="/history">History</router-link>
         <router-link to="/leaderboard">Leaderboard</router-link>
+        <router-link to="/Comparison">Comparison</router-link>
         <button @click="showSettings = true" class="settings-btn">Settings</button>
         <router-link to="/select-mode" class="website-addtrip">+</router-link>
       </nav>
     </header>
 
     <header v-if="isAndroid && isLoggedIn">
+
       <h1>EcoHabit</h1>
+      <div class="settings-dropdown">
+        <button @click="toggleSettingsDropdown" class="header-settings-btn">
+          ⚙️
+        </button>
+        <div v-if="showSettings" class="dropdown-menu">
+          <button @click="logout" class="dropdown-item logout-btn">🚪 Logout</button>
+          <button @click="toggleDarkMode" class="dropdown-item">
+            🌙 {{ darkMode ? 'Light Mode' : 'Dark Mode' }}
+          </button>
+          <button class="dropdown-item" disabled>📍 Location Settings (Coming Soon)</button>
+        </div>
+      </div>
     </header>
 
     <!-- Main content area -->
@@ -42,11 +57,11 @@
         <div class="nav-icon">🏆</div>
         <span class="nav-label">Leaderboard</span>
       </router-link>
-
-      <button @click="showSettings = true" class="nav-item settings-btn">
-        <div class="nav-icon">⚙️</div>
-        <span class="nav-label">Settings</span>
-      </button>
+      
+      <router-link to="/comparison" class="nav-item" active-class="active">
+        <div class="nav-icon">⚖️</div>
+        <span class="nav-label">Comparison</span>
+      </router-link>
     </nav>
 
     <!-- Settings Modal/Overlay -->
@@ -110,6 +125,9 @@ import { Capacitor } from '@capacitor/core';
         this.darkMode = !this.darkMode;
         localStorage.setItem('darkMode', this.darkMode);
         document.body.classList.toggle('dark', this.darkMode);
+      },
+      toggleSettingsDropdown() {
+        this.showSettings = !this.showSettings;
       }
     },
     created() {
@@ -214,6 +232,7 @@ import { Capacitor } from '@capacitor/core';
   }
 
   header {
+    position: relative;
     background: linear-gradient(135deg, #007bff, #0056b3);
     color: white;
     padding: 1rem;
@@ -496,5 +515,73 @@ import { Capacitor } from '@capacitor/core';
      color: #000000 !important;
   }
 
+    .header-settings-btn {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    color: white;
+    cursor: pointer;
+  }
 
-</style>
+  .header-settings-btn:hover {
+    opacity: 0.8;
+  }
+    .header-settings-btn {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    color: white;
+    cursor: pointer;
+  }
+
+  .settings-dropdown {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    transform: translateY(-50%);
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: 120%;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    padding: 0.5rem 0;
+    z-index: 2000;
+    min-width: 160px;
+  }
+
+  .dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: #111827;
+  }
+
+  .dropdown-item:hover:not(:disabled) {
+    background-color: #f3f4f6;
+  }
+
+  .dropdown-item:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .logout-btn {
+    color: #dc2626;
+  }
+  .logout-btn:hover {
+    background-color: #fef2f2;
+  }
+  </style>
