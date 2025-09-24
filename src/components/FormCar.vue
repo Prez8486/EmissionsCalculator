@@ -122,6 +122,7 @@
         this.clearClickMarkers();
       },
       handleMapClick(e) {
+        
         if (this.clickMarkers.length >= 2) {
           this.clearClickMarkers();
         }
@@ -134,6 +135,11 @@
           const distance = start.distanceTo(end) / 1000;
           this.km = parseFloat(distance.toFixed(2));
           this.polyline.setLatLngs([start, end]);
+          this.path = [
+            [start.lat, start.lng],
+            [end.lat, end.lng]
+          ];
+         
         }
       },
       clearClickMarkers() {
@@ -141,6 +147,7 @@
         this.clickMarkers = [];
         this.polyline.setLatLngs([]);
         this.km = 0;
+        this.path = [];
       },
 
       // === GPS LIVE TRACKING ===
