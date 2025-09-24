@@ -168,6 +168,8 @@
         const kmValue = (total / 1000).toFixed(2);
         this.km = parseFloat(kmValue);
         localStorage.setItem("carTripDistance", kmValue);
+        console.log(`Trip ended. Path has ${this.path.length} points.`, this.path);
+
       },
       trackPosition(pos) {
         const latlng = [pos.coords.latitude, pos.coords.longitude];
@@ -270,6 +272,8 @@
           return;
         }
 
+        console.log(`Saving trip. Path has ${this.path.length} points.`, this.path);
+
         try {
           const payload = {
             transportMode: "car",
@@ -278,10 +282,13 @@
             distanceKm: this.km,
             trips: this.trips,
             extraLoad: this.extraLoadType,
-            emissionKg: this.emissionPerTrip * 1000
+            emissionKg: this.emissionPerTrip * 1000,
+            path: this.path,
           };
 
+
           const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/log", {
+
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -344,6 +351,15 @@
     color: white;
     border: none;
     border-radius: 5px;
+  }
+
+  button:hover {
+    background-color: #0056b3;
+  }
+
+  button:disabled {
+    background: #a6d1ff;
+    cursor: not-allowed;
   }
 
   .result {

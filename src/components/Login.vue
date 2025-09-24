@@ -52,7 +52,9 @@ export default {
     methods: {
       async login() {
         try {
+
           const res = await fetch('https://emissionscalculatorbackend.duckdns.org/api/auth/login', {
+
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: this.email, password: this.password })

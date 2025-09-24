@@ -121,6 +121,9 @@ import { Capacitor } from '@capacitor/core';
         this.showSettings = false;
         this.$router.push('/login');
       },
+      checkPlatform() {
+        this.isAndroid = Capacitor.isNativePlatform();
+      },
       toggleDarkMode() {
         this.darkMode = !this.darkMode;
         localStorage.setItem('darkMode', this.darkMode);
