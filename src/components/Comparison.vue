@@ -18,16 +18,17 @@
 
         <!-- Scrollable Car Cards -->
         <div class="car-scroll" ref="carScroll">
-          <div 
-            v-for="(car, index) in cars" 
-            :key="car.name" 
-            class="car-card"
-          >
+                    <div
+              v-for="(car, index) in cars"
+              :key="car.name"
+              class="car-card"
+            >
+          
             <div class="placeholder-img">{{ car.name }}</div>
             <p>Base Emissions: {{ car.baseEmissions }}</p>
             <p v-if="car.savings">Estimated savings: {{ car.savings }}</p>
             <p v-if="car.time">Time until net positive: {{ car.time }}</p>
-          </div>
+        </div>
 
           <!-- Custom car option -->
           <div class="car-card custom-car">
@@ -166,6 +167,7 @@ export default {
     compareCustomCar() {
       alert("Open form to compare a custom car.");
     },
+    
     calcSavings(type) {
       if (type === 'public') {
         this.publicSavings = this.publicKm * this.savingsFactors.public;
@@ -175,7 +177,9 @@ export default {
       }
     }
   }
-};
+  };
+
+
 </script>
 
 <style scoped>

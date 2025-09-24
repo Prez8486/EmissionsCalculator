@@ -6,17 +6,18 @@
       <label>Car Make:</label>
       <select v-model="selectedMake" @change="fetchModels">
         <option disabled value="">Select Make</option>
-        <option v-for="make in makes" :key="make.make" :value="make.make">
+        <option v-for="make in makes || []" :key="make.make" :value="make.make">
           {{ make.make }}
         </option>
       </select>
 
-      <!-- Car Model -->
       <label>Car Model:</label>
       <select v-model="selectedModel">
         <option disabled value="">Select Model</option>
-        <option v-for="model in models" :key="model.model" :value="model.model">
+
+        <option v-for="model in models || []" :key="model.model" :value="model.model">
           {{ model.model }}
+
         </option>
       </select>
 
@@ -44,25 +45,24 @@ export default {
   async mounted() {
     await this.fetchMakes();
   },
-  methods: {
     async fetchMakes() {
       try {
-        const res = await fetch("http://136.186.108.171/api/emissions/car/makes");
+        const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/car/makes");
         const result = await res.json();
         this.makes = result.data || [];
       } catch (err) {
-        console.error("Failed to load makes:", err);
+        console.error(err);
+        alert("Failed to load car makes");
       }
     },
     async fetchModels() {
       try {
-        const res = await fetch(
-          `http://136.186.108.171/api/emissions/car/models/${this.selectedMake}`
-        );
+        const res = await fetch(`https://emissionscalculatorbackend.duckdns.org/api/emissions/car/models/${this.selectedMake}`);
         const result = await res.json();
         this.models = result.data || [];
       } catch (err) {
-        console.error("Failed to load models:", err);
+        console.error(err);
+        alert("Failed to load car models");
       }
     },
     saveCurrentCar() {
