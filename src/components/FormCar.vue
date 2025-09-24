@@ -22,8 +22,10 @@
 
     <!-- Manual Car Form -->
     <form @submit.prevent="calculateEmission">
+
       <label>Distance per Trip (km):</label>
       <input v-model.number="km" type="number" min="0" readonly />
+
 
       <label>Trips per Week:</label>
       <input v-model.number="trips" type="number" min="0" />
@@ -49,8 +51,10 @@
       <label>Car Model:</label>
       <select v-model="selectedModel">
         <option disabled value="">Select Model</option>
+
         <option v-for="model in models || []" :key="model.model" :value="model.model">
           {{ model.model }}
+
         </option>
       </select>
 
@@ -118,6 +122,7 @@
         this.clearClickMarkers();
       },
       handleMapClick(e) {
+        
         if (this.clickMarkers.length >= 2) {
           this.clearClickMarkers();
         }
@@ -130,6 +135,11 @@
           const distance = start.distanceTo(end) / 1000;
           this.km = parseFloat(distance.toFixed(2));
           this.polyline.setLatLngs([start, end]);
+          this.path = [
+            [start.lat, start.lng],
+            [end.lat, end.lng]
+          ];
+         
         }
       },
       clearClickMarkers() {
@@ -137,6 +147,7 @@
         this.clickMarkers = [];
         this.polyline.setLatLngs([]);
         this.km = 0;
+        this.path = [];
       },
 
       // === GPS LIVE TRACKING ===
@@ -164,6 +175,8 @@
         const kmValue = (total / 1000).toFixed(2);
         this.km = parseFloat(kmValue);
         localStorage.setItem("carTripDistance", kmValue);
+        console.log(`Trip ended. Path has ${this.path.length} points.`, this.path);
+
       },
       trackPosition(pos) {
         const latlng = [pos.coords.latitude, pos.coords.longitude];
@@ -235,17 +248,22 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+
               vehicleMake: this.selectedMake,
               vehicleModel: this.selectedModel,
               distanceKm: this.km
+
             })
           });
+          //recieving calculated response from backend
           const data = await res.json();
+
           const emissionKg = data.data.co2e_kg;
 
           this.emissionPerTrip = emissionKg / 1000;
           this.emissionPerWeek = this.emissionPerTrip * this.trips;
           this.emissionPerYear = this.emissionPerWeek * 52;
+
         } catch (err) {
           console.error(err);
           alert("Error calculating emissions");
@@ -261,6 +279,8 @@
           return;
         }
 
+        console.log(`Saving trip. Path has ${this.path.length} points.`, this.path);
+
         try {
           const payload = {
             transportMode: "car",
@@ -269,10 +289,13 @@
             distanceKm: this.km,
             trips: this.trips,
             extraLoad: this.extraLoadType,
-            emissionKg: this.emissionPerTrip * 1000
+            emissionKg: this.emissionPerTrip * 1000,
+            path: this.path,
           };
 
+
           const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/log", {
+
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -335,6 +358,15 @@
     color: white;
     border: none;
     border-radius: 5px;
+  }
+
+  button:hover {
+    background-color: #0056b3;
+  }
+
+  button:disabled {
+    background: #a6d1ff;
+    cursor: not-allowed;
   }
 
   .result {
