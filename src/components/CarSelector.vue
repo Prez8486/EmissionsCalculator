@@ -44,7 +44,8 @@ export default {
   },
   async mounted() {
     await this.fetchMakes();
-  },
+    },
+    methods: {
     async fetchMakes() {
       try {
         const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/car/makes");
