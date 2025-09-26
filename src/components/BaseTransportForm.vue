@@ -13,7 +13,7 @@
       v-if="isLiveMode && trip"
       :trip="trip"
       :is-active="tripState.isActive"
-      :distance="tripState.data.distance"
+      :distance="tripState.data.distance || 0"
       :loading="tripState.loading"
       @start-trip="startTrip"
       @end-trip="endTrip"
@@ -27,9 +27,29 @@
       :errors="tripState.errors"
       :loading="tripState.loading"
       :plugins="plugins"
+      :emission="tripState.emission"
       @update-field="updateField"
       @calculate="calculateEmissions"
+      @save-trip="saveTrip"
     />
+
+    <!-- AI Prediction Display (Live Mode Only) -->
+    <div v-if="isLiveMode && aiPrediction" class="ai-prediction-section">
+      <h4>AI Transport Detection</h4>
+      <div class="prediction-card" :class="{ 'prediction-mismatch': predictionMismatch }">
+        <div class="prediction-info">
+          <span class="predicted-mode">
+            {{ getTransportIcon(aiPrediction.mode) }} {{ aiPrediction.mode }}
+          </span>
+          <span class="confidence">
+            {{ (aiPrediction.confidence * 100).toFixed(1) }}% confident
+          </span>
+        </div>
+        <div v-if="predictionMismatch" class="mismatch-warning">
+          Different from your selection ({{ transportMode }})
+        </div>
+      </div>
+    </div>
 
     <!-- Emissions Results (Both Modes) -->
     <EmissionsSummary
@@ -39,16 +59,7 @@
       :trip-data="tripState.data"
     />
 
-    <!-- Save Button (Manual Mode Only) -->
-    <div v-if="!isLiveMode && tripState.emission" class="save-section">
-      <button
-        @click="saveTrip"
-        :disabled="tripState.loading"
-        class="save-button"
-      >
-        {{ tripState.loading ? 'Saving...' : 'Save to History' }}
-      </button>
-    </div>
+
 
     <!-- Status Messages -->
     <div v-if="statusMessage" class="status-message" :class="messageType">
@@ -59,6 +70,14 @@
     <div v-if="errorMessage" class="error-message">
       {{ errorMessage }}
     </div>
+
+    <!-- Trip Summary Modal -->
+    <TripSummary
+      :show="showTripSummary"
+      :trip-data="tripSummaryData"
+      @close="closeTripSummary"
+      @save="saveTripFromSummary"
+    />
   </div>
 </template>
 
@@ -71,13 +90,15 @@ import { FlightAPIPlugin } from '../plugins/flightAPI.js';
 import LiveTrackingUI from './LiveTrackingUI.vue';
 import ManualInputUI from './ManualTrackingUI.vue';
 import EmissionsSummary from './EmissionsSummary.vue';
+import TripSummary from './TripSummary.vue';
 
 export default {
   name: 'BaseTransportForm',
   components: {
     LiveTrackingUI,
     ManualInputUI,
-    EmissionsSummary
+    EmissionsSummary,
+    TripSummary
   },
 
   props: {
@@ -92,13 +113,28 @@ export default {
     return {
       trip: null,
       tripState: {
-        data: {}
+        data: {
+          distance: 0,
+          duration: 0
+        },
+        isActive: false,
+        loading: false,
+        emission: 0
       },
       plugins: {},
       isLiveMode: false,
       statusMessage: '',
       errorMessage: '',
-      messageType: 'info'
+      messageType: 'info',
+
+      aiPrediction: null,
+      showTripSummary: false,
+      tripSummaryData: null,
+      predictionMismatch: false,
+
+      // Track trip timing
+      tripStartTime: null,
+      tripEndTime: null
     };
   },
 
@@ -145,7 +181,8 @@ export default {
             onDataUpdate: this.handleDataUpdate,
             onError: this.handleError,
             onLocationUpdate: this.handleLocationUpdate,
-            onDistanceUpdate: this.handleDistanceUpdate
+            onDistanceUpdate: this.handleDistanceUpdate,
+            onPredictionReceived: this.handlePredictionReceived
           });
         } else {
           this.trip = new ManualTrip(this.transportMode, this.userId, {
@@ -227,6 +264,7 @@ export default {
 
     // Trip control methods
     async startTrip() {
+      this.tripStartTime = Date.now();
       const success = await this.trip.startTrip();
       if (success) {
         this.showMessage('Trip started successfully!', 'success');
@@ -234,14 +272,106 @@ export default {
     },
 
     async endTrip() {
+      this.tripEndTime = Date.now();
       const success = await this.trip.endTrip();
-      if (success && this.isLiveMode) {
-        this.showMessage('Trip ended and automatically saved!', 'success');
-        // Redirect after a short delay
-        setTimeout(() => {
-          this.$router.push('/home');
-        }, 2000);
+
+      if (success) {
+        // In live mode, automatically save the trip first
+        if (this.isLiveMode) {
+          const saveSuccess = await this.trip.saveTrip();
+          if (saveSuccess) {
+            this.showMessage('Trip saved successfully!', 'success');
+          }
+        }
+
+        // Calculate trip duration with proper fallbacks
+        const duration = this.calculateTripDuration();
+        const distance = this.tripState.data.distance || 0;
+        const emission = this.tripState.emission || 0;
+
+        console.log('Trip data for summary:', {
+          duration,
+          distance,
+          emission,
+          tripState: this.tripState
+        });
+
+        // Prepare trip summary data with proper validation
+        this.tripSummaryData = {
+          transportMode: this.transportMode,
+          distance: distance,
+          emission: emission,
+          duration: duration,
+          path: this.trip.path || [],
+          aiPrediction: this.aiPrediction,
+          startTime: this.tripStartTime,
+          endTime: this.tripEndTime,
+          // Add formatted strings for display
+          distanceDisplay: `${distance.toFixed(2)} km`,
+          emissionDisplay: `${emission.toFixed(3)} kg CO₂`,
+          durationDisplay: this.formatDurationString(duration),
+          averageSpeedDisplay: this.calculateAverageSpeedDisplay(distance, duration)
+        };
+
+        console.log('Formatted trip summary data:', this.tripSummaryData);
+
+        // Show summary modal
+        this.showTripSummary = true;
+        this.showMessage('Trip completed! Review your summary below.', 'success');
       }
+    },
+
+    calculateTripDuration() {
+      if (this.tripStartTime && this.tripEndTime) {
+        return this.tripEndTime - this.tripStartTime;
+      }
+
+      // Fallback: try to get duration from trip state or default to 0
+      if (this.tripState.data.duration) {
+        return this.tripState.data.duration;
+      }
+
+      return 0;
+    },
+
+    formatDistance(distance) {
+      const numDistance = Number(distance);
+      return isNaN(numDistance) ? 0 : parseFloat(numDistance.toFixed(2));
+    },
+
+    formatEmission(emission) {
+      const numEmission = Number(emission);
+      return isNaN(numEmission) ? 0 : parseFloat(numEmission.toFixed(3));
+    },
+
+    formatDuration(duration) {
+      const numDuration = Number(duration);
+      return isNaN(numDuration) ? 0 : Math.max(0, Math.floor(numDuration));
+    },
+
+    formatDurationString(duration) {
+      const numDuration = Number(duration);
+      if (isNaN(numDuration) || numDuration <= 0) return '00:00:00';
+
+      const hours = Math.floor(numDuration / (1000 * 60 * 60));
+      const minutes = Math.floor((numDuration % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((numDuration % (1000 * 60)) / 1000);
+
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    },
+
+    calculateAverageSpeedDisplay(distance, duration) {
+      const numDistance = Number(distance);
+      const numDuration = Number(duration);
+
+      if (isNaN(numDistance) || isNaN(numDuration) || numDistance <= 0 || numDuration <= 0) {
+        return '0.0 km/h';
+      }
+
+      const hours = numDuration / (1000 * 60 * 60);
+      const speed = numDistance / hours;
+
+      return isNaN(speed) ? '0.0 km/h' : `${speed.toFixed(1)} km/h`;
     },
 
     async calculateEmissions() {
@@ -299,6 +429,21 @@ export default {
       console.log('Distance update:', distance);
     },
 
+    handlePredictionReceived(prediction) {
+      console.log('AI Prediction received:', prediction);
+      this.aiPrediction = prediction;
+
+      // Check for mismatch
+      this.predictionMismatch = prediction.mode !== this.transportMode && prediction.confidence > 0.7;
+
+      if (this.predictionMismatch) {
+        this.showMessage(
+          `AI detected ${prediction.mode} transport (${(prediction.confidence * 100).toFixed(1)}% confident). You selected ${this.transportMode}. Is this correct?`,
+          'warning'
+        );
+      }
+    },
+
     // UI helpers
     showMessage(message, type = 'info') {
       this.statusMessage = message;
@@ -307,6 +452,42 @@ export default {
       setTimeout(() => {
         this.statusMessage = '';
       }, 3000);
+    },
+
+    closeTripSummary() {
+      this.showTripSummary = false;
+
+      // In live mode, navigate back to home after closing summary
+      if (this.isLiveMode) {
+        this.$router.push('/home');
+      }
+    },
+
+    saveTripFromSummary() {
+      // This is only for manual mode since live mode auto-saves
+      if (!this.isLiveMode && this.trip && this.trip.saveTrip) {
+        this.trip.saveTrip().then(success => {
+          if (success) {
+            this.showMessage('Trip saved from summary!', 'success');
+            this.showTripSummary = false;
+            this.$router.push('/home');
+          }
+        });
+      } else {
+        // For live mode, just close and navigate
+        this.closeTripSummary();
+      }
+    },
+
+    getTransportIcon(mode) {
+      const icons = {
+        car: '🚗',
+        bus: '🚌',
+        tram: '🚊',
+        metro: '🚇',
+        flight: '✈️'
+      };
+      return icons[mode] || '🚶';
     }
   }
 };
@@ -383,6 +564,12 @@ export default {
   border: 1px solid #c3e6cb;
 }
 
+.status-message.warning {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
 .error-message {
   margin-top: 15px;
   padding: 10px;
@@ -391,5 +578,54 @@ export default {
   border: 1px solid #f5c6cb;
   border-radius: 4px;
   text-align: center;
+}
+
+.ai-prediction-section {
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.ai-prediction-section h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 1rem;
+}
+
+.prediction-card {
+  background: white;
+  border: 2px solid #28a745;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.prediction-card.prediction-mismatch {
+  border-color: #ffc107;
+  background: #fff3cd;
+}
+
+.prediction-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.predicted-mode {
+  font-weight: bold;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.confidence {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.mismatch-warning {
+  color: #856404;
+  font-size: 0.85rem;
+  font-style: italic;
 }
 </style>

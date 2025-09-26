@@ -1,4 +1,5 @@
 import { getTransportConfig } from "@/config/transportConfig";
+import { API_BASE } from '@/config/apiConfig.js';
 
 export class BaseTrip {
   constructor(transportMode, userId, options = {}){
@@ -116,7 +117,7 @@ export class BaseTrip {
         headers.Authorization = `Bearer ${token}`;
       }
 
-      const response = await fetch(`http://136.186.108.171${this.config.api.emissions}`, {
+      const response = await fetch(`${API_BASE}/emissions`, {
         method: this.config.api.method,
         headers,
         body: JSON.stringify(payload)
@@ -175,7 +176,7 @@ export class BaseTrip {
 
       const payload = this.config.savePayload(this.data);
 
-      const response = await fetch('http://136.186.108.171/api/emissions/log', {
+      const response = await fetch(`${API_BASE}/emissions/log`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

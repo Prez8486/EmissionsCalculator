@@ -21,7 +21,9 @@
   </div>
 </template>
 
-<script>export default {
+<script>
+import { API_BASE } from '@/config/apiConfig.js';
+export default {
   data() {
     return {
       leaders: []
@@ -30,7 +32,7 @@
   async mounted() {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/leaderboard", {
+      const res = await fetch(`${API_BASE}/emissions/leaderboard`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

@@ -112,6 +112,7 @@
 
 <script>
   import { Bar, Line } from 'vue-chartjs';
+  import { API_BASE } from '@/config/apiConfig';
   import {
     Chart as ChartJS,
     Title,
@@ -281,7 +282,7 @@
       async fetchRecords() {
         try {
           const token = localStorage.getItem('token');
-          const res = await fetch('https://emissionscalculatorbackend.duckdns.org/api/emissions/history', {
+          const res = await fetch(`${API_BASE}/emissions/history`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (!res.ok) {

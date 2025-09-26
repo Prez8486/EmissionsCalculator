@@ -6,5 +6,12 @@ import 'bootstrap';
 import { createPinia } from 'pinia';
 
 
-createApp(App).use(router).mount('#app');
+// create the Vue app instance
+const app = createApp(App);
+
+// add plugins
+app.use(router);
 app.use(createPinia());
+
+// mount the app
+app.mount('#app');

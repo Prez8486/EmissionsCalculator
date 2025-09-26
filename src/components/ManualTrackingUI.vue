@@ -160,6 +160,17 @@
       </button>
     </form>
 
+    <!-- Save Button (Only for Manual Mode) -->
+    <div v-if="emission && emission > 0" class="save-section">
+      <button
+        @click="handleSaveTrip"
+        :disabled="loading"
+        class="save-button"
+      >
+        {{ loading ? 'Saving...' : 'Save to History' }}
+      </button>
+    </div>
+
     <!-- Validation Summary -->
     <div v-if="Object.keys(errors).length > 0" class="validation-summary">
       <h4>Please fix the following errors:</h4>
@@ -206,6 +217,10 @@ export default {
     plugins: {
       type: Object,
       default: () => ({})
+    },
+    emission: {
+      type: Number,
+      default: 0
     }
   },
 
@@ -283,6 +298,10 @@ export default {
 
     handleCalculate() {
       this.$emit('calculate');
+    },
+
+    handleSaveTrip() {
+      this.$emit('save-trip');
     },
 
     getModelPlaceholder() {
@@ -386,6 +405,31 @@ export default {
 }
 
 .calculate-button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.save-section {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.save-button {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.save-button:hover:not(:disabled) {
+  background: #218838;
+}
+
+.save-button:disabled {
   background: #6c757d;
   cursor: not-allowed;
 }

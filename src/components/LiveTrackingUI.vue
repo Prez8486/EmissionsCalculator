@@ -50,8 +50,8 @@
         <div class="stat-value">{{ averageSpeed }} km/h</div>
       </div>
       <div class="stat-item">
-        <div class="stat-label">Points</div>
-        <div class="stat-value">{{ trackingPoints }}</div>
+        <div class="stat-label">Distance</div>
+        <div class="stat-value">{{ formatDistance(distance) }} km</div>
       </div>
     </div>
 
@@ -155,15 +155,14 @@ export default {
     },
 
     averageSpeed() {
-      if (!this.isActive || this.distance === 0 || this.tripDuration === 0) {
+      if (!this.isActive || !this.distance || !this.tripDuration) {
         return '0.0';
       }
       const hours = this.tripDuration / (1000 * 60 * 60);
-      return (this.distance / hours).toFixed(1);
-    },
+      if (hours === 0) return '0.0';
 
-    trackingPoints() {
-      return this.trip.path ? this.trip.path.length : 0;
+      const speed = this.distance / hours;
+      return isNaN(speed) ? '0.0' : speed.toFixed(1);
     },
 
     gpsStatusClass() {
@@ -197,9 +196,9 @@ export default {
   },
 
   mounted() {
-      if (this.trip && this.$refs.mapContainer) {
-    this.initializeMap();
-  }
+    if (this.trip && this.$refs.mapContainer) {
+      this.initializeMap();
+    }
     this.checkGPSAvailability();
     this.loadCarData();
   },
@@ -251,7 +250,7 @@ export default {
           );
         });
       } catch (error) {
-        this.gpsStatus = error
+        this.gpsStatus = error;
       }
     },
 
@@ -318,15 +317,17 @@ export default {
 
     // Utility methods
     formatDistance(distance) {
-      return (distance || 0).toFixed(2);
+      const numDistance = Number(distance);
+      return isNaN(numDistance) ? 0 : numDistance.toFixed(2);
     },
 
     formatDuration(duration) {
-      if (!duration) return '00:00:00';
+      const numDuration = Number(duration);
+      if (isNaN(numDuration) || !numDuration) return '00:00:00';
 
-      const hours = Math.floor(duration / (1000 * 60 * 60));
-      const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((duration % (1000 * 60)) / 1000);
+      const hours = Math.floor(numDuration / (1000 * 60 * 60));
+      const minutes = Math.floor((numDuration % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((numDuration % (1000 * 60)) / 1000);
 
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     },

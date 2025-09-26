@@ -1,3 +1,5 @@
+import { API_BASE } from '@/config/apiConfig.js';
+
 // flightApi.js
 export class FlightAPIPlugin {
   constructor() {
@@ -41,7 +43,7 @@ export class FlightAPIPlugin {
       this.loading = true;
 
       const response = await fetch(
-        `http://136.186.108.171/api/emissions/flight/airports?query=${encodeURIComponent(query)}`
+        `${API_BASE}/emissions/flight/airports?query=${encodeURIComponent(query)}`
       );
 
       if (!response.ok) {

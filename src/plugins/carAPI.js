@@ -1,3 +1,5 @@
+import { API_BASE } from '@/config/apiConfig.js';
+
 export class CarAPIPlugin {
   constructor() {
     this.makes = [];
@@ -46,8 +48,7 @@ export class CarAPIPlugin {
 
     try {
       this.loading = true;
-
-      const response = await fetch('http://136.186.108.171/api/emissions/car/makes');
+      const response = await fetch(`${API_BASE}/emissions/car/makes`);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -90,7 +91,7 @@ export class CarAPIPlugin {
       this.loading = true;
 
       const response = await fetch(
-        `http://136.186.108.171/api/emissions/car/models/${encodeURIComponent(make)}`
+        `${API_BASE}/emissions/car/models/${encodeURIComponent(make)}`
       );
 
       if (!response.ok) {

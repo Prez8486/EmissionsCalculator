@@ -9,9 +9,9 @@ import Login from '../components/Login.vue';
 import Register from '../components/Register.vue';
 import History from '../components/History.vue';
 import Leaderboard from '../components/UserLeaderboard.vue';
-import CarTrip from '../components/CarTrip.vue';
 import ChangePassword from '../components/ChangePassword.vue';
 import BaseTransportForm from '@/components/BaseTransportForm.vue';
+import SelectMode from '../components/SelectMode.vue';
 
 const routes = [
   { path: '/', component: Login },
@@ -25,7 +25,7 @@ const routes = [
   { path: '/form/flight', component: FormFlight },
   { path: '/leaderboard', component: Leaderboard },
   { path: '/history', component: History },
-  { path: '/cartrip', component: CarTrip },
+  { path: '/select-mode', component: SelectMode },
   {
     path: '/base-form',
     component: BaseTransportForm,

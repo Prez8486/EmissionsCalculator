@@ -15,6 +15,7 @@
 
 <script>
 import { Preferences } from '@capacitor/preferences';
+import { API_BASE } from '@/config/apiConfig';
 
 export default {
     data() {
@@ -39,11 +40,12 @@ export default {
         }, 5000);
       }
     },
+
     methods: {
       async login() {
         this.isLoading = true;
         try {
-          const res = await fetch('https://emissionscalculatorbackend.duckdns.org/api/auth/login', {
+          const res = await fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: this.email, password: this.password })

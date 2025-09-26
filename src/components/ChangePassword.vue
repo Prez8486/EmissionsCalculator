@@ -19,6 +19,7 @@
 </template>
 
 <script>
+import { API_BASE } from '@/config/apiConfig.js';
   export default {
     data() {
       return {
@@ -38,7 +39,7 @@
         try {
           this.loading = true;
           const token = localStorage.getItem("token");
-          const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/auth/change-password", {
+          const res = await fetch(`${API_BASE}/auth/change-password`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
