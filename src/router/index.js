@@ -31,7 +31,11 @@ const routes = [
     component: BaseTransportForm,
     props: route => ({ transportMode: route.query.mode || '' })
   },
+
+  { path: '/comparison', component: Comparison },
+
   { path: '/changepassword', component: ChangePassword },
+
 ];
 
 export default createRouter({
