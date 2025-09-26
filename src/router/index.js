@@ -12,6 +12,7 @@ import Leaderboard from '../components/UserLeaderboard.vue';
 import ChangePassword from '../components/ChangePassword.vue';
 import BaseTransportForm from '@/components/BaseTransportForm.vue';
 import SelectMode from '../components/SelectMode.vue';
+import Comparison from '../components/Comparison.vue';
 
 const routes = [
   { path: '/', component: Login },
@@ -26,16 +27,13 @@ const routes = [
   { path: '/leaderboard', component: Leaderboard },
   { path: '/history', component: History },
   { path: '/select-mode', component: SelectMode },
+  { path: '/comparison', component: Comparison },
+  { path: '/changepassword', component: ChangePassword },
   {
     path: '/base-form',
     component: BaseTransportForm,
     props: route => ({ transportMode: route.query.mode || '' })
   },
-
-  { path: '/comparison', component: Comparison },
-
-  { path: '/changepassword', component: ChangePassword },
-
 ];
 
 export default createRouter({
