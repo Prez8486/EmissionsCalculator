@@ -1,9 +1,16 @@
 <template>
   <div class="form-container">
     <h2>Bus Emission Calculator</h2>
+
+    <div id="map" class="map"></div>
+    <div class="buttons">
+      <button type="button" @click="startTrip" :disabled="tracking">Start Trip</button>
+      <button type="button" @click="endTrip" :disabled="!tracking">End Trip</button>
+    </div>
+
     <form @submit.prevent="calculateEmission">
       <label>Bus Distance Travelled (km):</label>
-      <input v-model.number="km" type="number" min="0" />
+      <input v-model.number="km" type="number" min="0" readonly/>
       <button type="submit" :disabled="loading">
         {{ loading ? "Calculating..." : "Calculate" }}
       </button>
@@ -18,15 +25,78 @@
 </template>
 
 <script>
+  import L from "leaflet";
   export default {
     data() {
       return {
         km: 0,
         emission: null,
-        loading: false
+        loading: false,
+
+        tracking: false,
+        watchId: null,
+        path: [],
+        map: null,
+        polyline: null,
       };
     },
+    mounted() {
+      this.loadMap();
+    },
     methods: {
+      startTrip() {
+        this.path = [];
+        this.km = 0;
+        this.tracking = true;
+
+        this.watchId = navigator.geolocation.watchPosition(
+          this.trackPosition,
+          (err) => alert("Location error: " + err.message),
+          { enableHighAccuracy: true }
+        );
+      },
+      endTrip() {
+        this.tracking = false;
+        if (this.watchId) navigator.geolocation.clearWatch(this.watchId);
+
+        let total = 0; 
+        for (let i = 1; i < this.path.length; i++) {
+          const prev = L.latLng(this.path[i - 1]);
+          const curr = L.latLng(this.path[i]);
+          total += prev.distanceTo(curr);
+        }
+        const kmValue = (total / 1000).toFixed(2);
+        this.km = parseFloat(kmValue);
+      },
+      trackPosition(pos) {
+        const latlng = [pos.coords.latitude, pos.coords.longitude];
+        this.path.push(latlng);
+
+        if (this.map) {
+          const leafletLatLng = L.latLng(latlng);
+          L.marker(leafletLatLng).addTo(this.map);
+          this.polyline.addLatLng(leafletLatLng);
+          this.map.panTo(leafletLatLng);
+        }
+
+        let total = 0;
+        for (let i = 1; i < this.path.length; i++) {
+          const prev = L.latLng(this.path[i - 1]);
+          const curr = L.latLng(this.path[i]);
+          total += prev.distanceTo(curr);
+        }
+        this.km = parseFloat((total / 1000).toFixed(2));
+      },
+      loadMap() {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const center = [pos.coords.latitude, pos.coords.longitude];
+          this.map = L.map("map").setView(center, 15);
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "© OpenStreetMap",
+          }).addTo(this.map);
+          this.polyline = L.polyline([], { color: "red" }).addTo(this.map);
+        });
+      },
       async calculateEmission() {
         if (!this.km) {
           alert("Please enter distance.");
@@ -95,6 +165,13 @@
     border-radius: 10px;
   }
 
+  .map {
+    height: 300px;
+    width: 100%;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+  }
+
   form {
     display: flex;
     flex-direction: column;
@@ -118,6 +195,15 @@
     border-radius: 5px;
   }
 
+  button:hover {
+    background-color: #0056b3;
+  }
+
+  button:disabled {
+    background: #a6d1ff;
+    cursor: not-allowed;
+  }
+
   .result {
     margin-top: 2rem;
     padding: 1.5rem;
@@ -127,7 +213,14 @@
     color: #00457c;
   }
 
+  .buttons {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
   body.dark label {
     color: #000000 !important;
   }
 </style>
++"_{""}"

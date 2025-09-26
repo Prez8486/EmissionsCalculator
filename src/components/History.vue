@@ -103,14 +103,15 @@
     <div v-if="selected" class="modal" @click="selected = null">
       <div class="modal-content" @click.stop>
         <span class="close" @click="selected = null">&times;</span>
-        <h3>What If Analysis for {{ new Date(selected.date).toLocaleDateString() }}</h3>
-        <BarChart v-if="chartData" :chart-data="chartData" />
+        <h3>Trip Route: {{ new Date(selected.date).toLocaleDateString() }}</h3>
+        <div id="tripMap" class="map"></div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+  import L from "leaflet";
   import { Bar, Line } from 'vue-chartjs';
   import {
     Chart as ChartJS,
@@ -125,7 +126,6 @@
     TimeScale
   } from 'chart.js';
   import 'chartjs-adapter-date-fns';
-
   ChartJS.register(Title, Tooltip, Legend, BarElement, LineElement, PointElement, CategoryScale, LinearScale, TimeScale);
 
   export default {
@@ -136,9 +136,36 @@
         records: [],
         selected: null,
         loading: true,
-        error: null
+        error: null,
+        map: null
       };
     },
+
+    watch: {
+      selected() {
+        if (this.selected) {
+          this.$nextTick(() => {
+            if (this.map) {
+              this.map.remove();
+              this.map = null;
+            }
+
+            if (!this.selected.path || this.selected.path.length == 0) {
+              alert("There is no route available for this trip.")
+              this.selected = null;
+              return;
+            }
+
+            this.map = L.map("tripMap").setView(this.selected.path[0], 13);
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+              attribution: "© OpenStreetMap"
+            }).addTo(this.map);
+            L.polyline(this.selected.path, { color: "red" }).addTo(this.map);
+          })
+        }
+      }
+    },
+
     computed: {
       filteredRecords() {
         return this.records.filter(r => {
@@ -182,92 +209,92 @@
         },
         plugins: { legend: { display: true }, title: { display: false } }
       },
-      chartData() {
-        if (!this.selected) return null;
-        const r = this.selected;
+      // chartData() {
+      //   if (!this.selected) return null;
+      //   const r = this.selected;
 
-        // 🚗 Car
-        if (r.transportMode.toLowerCase() === 'car') {
-          const distance = r.distanceKm || 0;
-          const efficiency = { Toyota: 7.5, Honda: 7.2, Ford: 8.5 };
-          const factors = { unleaded91: 2.31 };
-          return {
-            labels: Object.keys(efficiency),
-            datasets: [{
-              label: 'Car Emissions (tonnes)',
-              data: Object.entries(efficiency).map(([k, v]) =>
-                ((v / 100) * distance * factors.unleaded91 / 1000).toFixed(4)
-              ),
-              backgroundColor: ['#42A5F5', '#66BB6A', '#FFA726']
-            }]
-          };
-        }
+      //   // 🚗 Car
+      //   if (r.transportMode.toLowerCase() === 'car') {
+      //     const distance = r.distanceKm || 0;
+      //     const efficiency = { Toyota: 7.5, Honda: 7.2, Ford: 8.5 };
+      //     const factors = { unleaded91: 2.31 };
+      //     return {
+      //       labels: Object.keys(efficiency),
+      //       datasets: [{
+      //         label: 'Car Emissions (tonnes)',
+      //         data: Object.entries(efficiency).map(([k, v]) =>
+      //           ((v / 100) * distance * factors.unleaded91 / 1000).toFixed(4)
+      //         ),
+      //         backgroundColor: ['#42A5F5', '#66BB6A', '#FFA726']
+      //       }]
+      //     };
+      //   }
 
-        // ✈ Flight
-        if (r.transportMode.toLowerCase() === 'flight') {
-          const flights = r.flights || 1;
-          const hours = r.hoursPerFlight || 1;
-          const airlineFactors = {
-            Generic: 0.09, Emirates: 0.10, AirIndia: 0.11, Qantas: 0.095, Ryanair: 0.085
-          };
-          const multiplier = { economy: 1, premium: 1.2, business: 1.5, first: 2 };
-          const currentClass = (r.flightClass || 'economy').toLowerCase();
-          return {
-            labels: Object.keys(airlineFactors),
-            datasets: [{
-              label: 'Flight Emissions (tonnes)',
-              data: Object.entries(airlineFactors).map(([airline, factor]) =>
-                (flights * hours * factor * (multiplier[currentClass] || 1)).toFixed(4)
-              ),
-              backgroundColor: ['#1E88E5', '#43A047', '#FB8C00', '#8E24AA', '#E53935']
-            }]
-          };
-        }
+      //   // ✈ Flight
+      //   if (r.transportMode.toLowerCase() === 'flight') {
+      //     const flights = r.flights || 1;
+      //     const hours = r.hoursPerFlight || 1;
+      //     const airlineFactors = {
+      //       Generic: 0.09, Emirates: 0.10, AirIndia: 0.11, Qantas: 0.095, Ryanair: 0.085
+      //     };
+      //     const multiplier = { economy: 1, premium: 1.2, business: 1.5, first: 2 };
+      //     const currentClass = (r.flightClass || 'economy').toLowerCase();
+      //     return {
+      //       labels: Object.keys(airlineFactors),
+      //       datasets: [{
+      //         label: 'Flight Emissions (tonnes)',
+      //         data: Object.entries(airlineFactors).map(([airline, factor]) =>
+      //           (flights * hours * factor * (multiplier[currentClass] || 1)).toFixed(4)
+      //         ),
+      //         backgroundColor: ['#1E88E5', '#43A047', '#FB8C00', '#8E24AA', '#E53935']
+      //       }]
+      //     };
+      //   }
 
-        // 🚌 Bus
-        if (r.transportMode.toLowerCase() === 'bus') {
-          const distance = r.distanceKm || 0;
-          const busTypes = { CityBus: 0.0001, Coach: 0.00008 };
-          return {
-            labels: Object.keys(busTypes),
-            datasets: [{
-              label: 'Bus Emissions (tonnes)',
-              data: Object.values(busTypes).map(f => (distance * f).toFixed(4)),
-              backgroundColor: ['#29B6F6', '#8BC34A']
-            }]
-          };
-        }
+      //   // 🚌 Bus
+      //   if (r.transportMode.toLowerCase() === 'bus') {
+      //     const distance = r.distanceKm || 0;
+      //     const busTypes = { CityBus: 0.0001, Coach: 0.00008 };
+      //     return {
+      //       labels: Object.keys(busTypes),
+      //       datasets: [{
+      //         label: 'Bus Emissions (tonnes)',
+      //         data: Object.values(busTypes).map(f => (distance * f).toFixed(4)),
+      //         backgroundColor: ['#29B6F6', '#8BC34A']
+      //       }]
+      //     };
+      //   }
 
-        // 🚋 Tram
-        if (r.transportMode.toLowerCase() === 'tram') {
-          const distance = r.distanceKm || 0;
-          const tramTypes = { LightRail: 0.00007, HeavyTram: 0.00009 };
-          return {
-            labels: Object.keys(tramTypes),
-            datasets: [{
-              label: 'Tram Emissions (tonnes)',
-              data: Object.values(tramTypes).map(f => (distance * f).toFixed(4)),
-              backgroundColor: ['#FFCA28', '#7E57C2']
-            }]
-          };
-        }
+      //   // 🚋 Tram
+      //   if (r.transportMode.toLowerCase() === 'tram') {
+      //     const distance = r.distanceKm || 0;
+      //     const tramTypes = { LightRail: 0.00007, HeavyTram: 0.00009 };
+      //     return {
+      //       labels: Object.keys(tramTypes),
+      //       datasets: [{
+      //         label: 'Tram Emissions (tonnes)',
+      //         data: Object.values(tramTypes).map(f => (distance * f).toFixed(4)),
+      //         backgroundColor: ['#FFCA28', '#7E57C2']
+      //       }]
+      //     };
+      //   }
 
-        // 🚇 Metro
-        if (r.transportMode.toLowerCase() === 'metro') {
-          const distance = r.distanceKm || 0;
-          const metroTypes = { Metro: 0.00006, SuburbanRail: 0.00008 };
-          return {
-            labels: Object.keys(metroTypes),
-            datasets: [{
-              label: 'Metro Emissions (tonnes)',
-              data: Object.values(metroTypes).map(f => (distance * f).toFixed(4)),
-              backgroundColor: ['#26A69A', '#AB47BC']
-            }]
-          };
-        }
+      //   // 🚇 Metro
+      //   if (r.transportMode.toLowerCase() === 'metro') {
+      //     const distance = r.distanceKm || 0;
+      //     const metroTypes = { Metro: 0.00006, SuburbanRail: 0.00008 };
+      //     return {
+      //       labels: Object.keys(metroTypes),
+      //       datasets: [{
+      //         label: 'Metro Emissions (tonnes)',
+      //         data: Object.values(metroTypes).map(f => (distance * f).toFixed(4)),
+      //         backgroundColor: ['#26A69A', '#AB47BC']
+      //       }]
+      //     };
+      //   }
 
-        return null;
-      }
+      //   return null;
+      // }
     },
     methods: {
       getIcon(mode) {
@@ -279,7 +306,9 @@
       async fetchRecords() {
         try {
           const token = localStorage.getItem('token');
+
           const res = await fetch('https://emissionscalculatorbackend.duckdns.org/api/emissions/history', {
+
             headers: { Authorization: `Bearer ${token}` }
           });
           if (!res.ok) {
@@ -522,6 +551,12 @@
     width: 100% !important;
     border-radius: 8px;
     margin-bottom: 1rem;
+  }
+
+  .map {
+    height: 100%;
+    width: 100%;
+    border-radius: 8px;
   }
 
   body.dark h2 {

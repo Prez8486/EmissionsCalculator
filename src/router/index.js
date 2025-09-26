@@ -14,7 +14,11 @@ import TripTracking from '../components/TripTracking.vue';
 import TripSummary from '../components/TripSummary.vue';
 
 import CarTrip from '../components/CarTrip.vue';
+
+import Comparison from '@/components/Comparison.vue';
+
 import ChangePassword from '../components/ChangePassword.vue';
+
 const routes = [
   { path: '/', component: Login },
   { path: '/login', component: Login },
@@ -28,7 +32,11 @@ const routes = [
   { path: '/leaderboard', component: Leaderboard },
   { path: '/history', component: History },
   { path: '/cartrip', component: CarTrip },
+
+  { path: '/comparison', component: Comparison },
+
   { path: '/changepassword', component: ChangePassword },
+
 ];
 
 export default createRouter({
