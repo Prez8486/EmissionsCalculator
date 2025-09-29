@@ -25,6 +25,8 @@
 </template>
 
 <script>
+import { Preferences } from '@capacitor/preferences';
+import { API_BASE } from '@/config/apiConfig';
 export default {
   data() {
     return {
@@ -49,24 +51,28 @@ export default {
         }, 5000);
       }
     },
+
     methods: {
       async login() {
+        this.isLoading = true;
         try {
-
-          const res = await fetch('https://emissionscalculatorbackend.duckdns.org/api/auth/login', {
-
+          const res = await fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: this.email, password: this.password })
           });
           const data = await res.json();
+
           if (data.token) {
+            await Preferences.set({ key: 'token', value: data.token });
             localStorage.setItem('token', data.token);
-            this.$router.push('/home');
+            const redirectTo = this.$route.query.redirect || '/home';
+            this.$router.push(redirectTo);
           } else {
             this.message = data.error || "Login failed.";
           }
         } catch (err) {
+          console.error('Login error:', err);
           this.message = "Login request failed.";
         } finally {
           this.loading = false; // ✅ Reset button state

@@ -41,6 +41,7 @@
 </template>
 
 <script>
+import { API_BASE } from '@/config/apiConfig.js';
 export default {
   data() {
     return {
@@ -91,7 +92,7 @@ export default {
   async mounted() {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://emissionscalculatorbackend.duckdns.org/api/emissions/history', {
+      const res = await fetch(`${API_BASE}/emissions/history`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
