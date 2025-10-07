@@ -94,7 +94,7 @@ export class BaseTrip {
     return Object.keys(this.errors).length === 0;
   }
 
-  // Calculate emissions using the API
+  // Calculate emissions using the API based on transport mode
   async calculateEmissions() {
     if (!this.validate()) {
       this.onError('Validation failed', this.errors);
@@ -108,17 +108,36 @@ export class BaseTrip {
       const payload = this.config.emissionsPayload(this.data);
       const token = localStorage.getItem('token');
 
-      const headers = {
-        'Content-Type': 'application/json'
-      };
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
 
-      // Add auth token if available (required for some endpoints)
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
+      // 🟩 Determine endpoint dynamically
+      let endpoint = '';
+      switch (this.transportMode) {
+        case 'car':
+          endpoint = `${API_BASE}/emissions/car/emissions`;
+          break;
+        case 'flight':
+          endpoint = `${API_BASE}/emissions/flight/emissions`;
+          break;
+        case 'bus':
+          endpoint = `${API_BASE}/emissions/bus/emissions`;
+          break;
+        case 'train':
+          endpoint = `${API_BASE}/emissions/train/emissions`;
+          break;
+        case 'tram':
+          endpoint = `${API_BASE}/emissions/tram/emissions`;
+          break;
+        default:
+          endpoint = `${API_BASE}/emissions`;
+          console.warn(`Unknown transport mode '${this.transportMode}', using default endpoint`);
+          break;
       }
 
-      const response = await fetch(`${API_BASE}/emissions`, {
-        method: this.config.api.method,
+      // 🟦 Call backend API
+      const response = await fetch(endpoint, {
+        method: this.config.api.method || 'POST',
         headers,
         body: JSON.stringify(payload)
       });
@@ -129,8 +148,8 @@ export class BaseTrip {
         throw new Error(result.error || 'Calculation failed');
       }
 
-      // Extract emission data (handle different response formats)
-      let emissionKg;
+      // 🟨 Extract emission data (supports multiple formats)
+      let emissionKg = 0;
       if (result.data?.co2e_kg) {
         emissionKg = result.data.co2e_kg;
       } else if (result.emissionKg) {
@@ -141,14 +160,15 @@ export class BaseTrip {
         throw new Error('Invalid response format');
       }
 
-      this.emission = emissionKg / 1000; // Convert to tonnes
+      // Convert to tonnes and update internal state
+      this.emission = emissionKg / 1000;
       this.data.emissionKg = emissionKg;
 
       this.onDataUpdate({ emission: this.emission, emissionKg });
       return true;
 
     } catch (error) {
-      console.error('Emission calculation failed:', error);
+      console.error(`Emission calculation failed for ${this.transportMode}:`, error);
       this.onError('Failed to calculate emissions', error.message);
       return false;
     } finally {
@@ -156,6 +176,7 @@ export class BaseTrip {
       this.onStateChange({ loading: false });
     }
   }
+
 
   // Save trip to backend
   async saveTrip() {

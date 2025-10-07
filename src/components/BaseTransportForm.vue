@@ -82,6 +82,7 @@
 </template>
 
 <script>
+  import { nextTick } from 'vue';
 import { LiveTrip } from '../models/LiveTrip.js';
 import { ManualTrip } from '../models/ManualTrip.js';
 import { CarAPIPlugin } from '../plugins/carAPI.js';
@@ -378,7 +379,33 @@ export default {
       const success = await this.trip.calculateEmissions();
       if (success) {
         this.showMessage('Emissions calculated successfully!', 'success');
-      }
+
+        // Wait for DOM to finish updating (prevents parentNode null error)
+        await nextTick();
+
+        // Safely compute display data
+        const distance = this.tripState.data.distance || 0;
+        const emission = this.tripState.emission || 0;
+        const duration = this.tripState.data.duration || 0;
+
+        // Build formatted summary object
+        this.tripSummaryData = {
+          transportMode: this.transportMode,
+          distance,
+          emission,
+          duration,
+          aiPrediction: this.aiPrediction,
+          distanceDisplay: `${ distance.toFixed(2) } km`,
+            emissionDisplay: `${ emission.toFixed(3) } kg CO₂`,
+        durationDisplay: this.formatDurationString(duration),
+          averageSpeedDisplay: this.calculateAverageSpeedDisplay(distance, duration)
+      };
+
+      // Show trip summary modal (v-show safer than v-if)
+      this.showTripSummary = true;
+    } else {
+      this.showMessage('Failed to calculate emissions. Please check your inputs.', 'warning');
+    }
     },
 
     async saveTrip() {

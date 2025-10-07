@@ -45,7 +45,7 @@ async function saveTrip() {
   }
 
   try {
-    const res = await fetch('https://emissionscalculatorbackend.onrender.com/api/trips/complete', {
+    const res = await fetch('https://emissionscalculatorbackend.duckdns.org/api/emissions/log', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -54,7 +54,8 @@ async function saveTrip() {
       body: JSON.stringify({
         transportMode,
         distanceKm,
-        durationSec
+        durationSec,
+        emissionKg: Math.max(distanceKm * 0.2, 0.01)
       })
     })
 

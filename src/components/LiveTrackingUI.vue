@@ -220,6 +220,12 @@ export default {
   methods: {
     async initializeMap() {
       try {
+        const oldMapEl = this.$refs.mapContainer;
+        if (oldMapEl && oldMapEl._leaflet_id) {
+          // Leaflet caches the element by ID internally
+          console.warn("Old Leaflet map detected — cleaning up before init...");
+          oldMapEl._leaflet_id = null;
+        }
         this.map = await this.trip.initializeMap(this.$refs.mapContainer, {
           zoom: 16
         });
@@ -335,8 +341,22 @@ export default {
     cleanup() {
       this.stopDurationTimer();
       if (this.map) {
-        this.map.remove();
-        this.map = null;
+        try {
+          // Remove all event listeners first
+          this.map.off();
+          this.map.remove();
+          console.log("🧹 Leaflet map removed safely.");
+        } catch (err) {
+          console.warn("⚠ Leaflet cleanup warning:", err.message);
+        } finally {
+          this.map = null;
+        }
+      }
+
+      // Defensive: clear cached leaflet container if still present
+      const mapEl = this.$refs.mapContainer;
+      if (mapEl && mapEl._leaflet_id) {
+        mapEl._leaflet_id = null;
       }
     }
   }
