@@ -35,7 +35,7 @@
           </p>
           <p>
             <strong>Emissions:</strong>
-            {{ (parseFloat(lastTrip.emissionKg || lastTrip.emission) / 1000).toFixed(3) + ' tonnes ' }}
+            {{ (parseFloat(lastTrip.emissionKg || lastTrip.emission) || 0).toFixed(2) + ' kg' }}
           </p>
 
 
