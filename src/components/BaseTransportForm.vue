@@ -31,6 +31,7 @@
       @update-field="updateField"
       @calculate="calculateEmissions"
       @save-trip="saveTrip"
+      @end-trip="endTrip"
     />
 
     <!-- AI Prediction Display (Live Mode Only) -->
@@ -273,13 +274,25 @@ export default {
     },
 
     async endTrip() {
+      console.log("End trip");
       this.tripEndTime = Date.now();
       const success = await this.trip.endTrip();
-
+      console.log(success);
       if (success) {
+        console.log("End trip success");
         // In live mode, automatically save the trip first
         if (this.isLiveMode) {
           const saveSuccess = await this.trip.saveTrip();
+          const duration = this.calculateTripDuration();
+          const distance = this.tripState.data.distance || 0;
+          const emission = this.tripState.emission || 0;
+
+          console.log('Trip data for summary:', {
+            duration,
+            distance,
+            emission,
+            tripState: this.tripState
+          });
           if (saveSuccess) {
             this.showMessage('Trip saved successfully!', 'success');
           }

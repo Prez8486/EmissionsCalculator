@@ -181,7 +181,7 @@ export class LiveTrip extends BaseTrip {
         return saved;
       }
 
-      return false;
+      return true;
 
     } catch (error) {
       console.error('Failed to end trip:', error);
@@ -421,7 +421,7 @@ export class LiveTrip extends BaseTrip {
 
     // Send final batch if any data remains
     if (this.sensorBuffer.length > 0) {
-      this.sendSensorBatch(true);
+     /* this.sendSensorBatch(true);*/
     }
   }
 
@@ -484,11 +484,11 @@ export class LiveTrip extends BaseTrip {
     // Send batch when buffer is full
     if (this.sensorBuffer.length >= this.batchSize) {
       console.log(`🚀 Buffer full! Sending batch of ${this.sensorBuffer.length} samples to AI service...`);
-      this.sendSensorBatch(false);
+      /*this.sendSensorBatch(false);*/
     }
   }
 
-  async sendSensorBatch(forceSend = false) {
+ /* async sendSensorBatch(forceSend = false) {
     if (!this.sensorBuffer.length && !forceSend) {
       console.log('⏭️ No sensor data to send');
       return;
@@ -584,5 +584,5 @@ export class LiveTrip extends BaseTrip {
     const clearedSamples = this.sensorBuffer.length;
     this.sensorBuffer = [];
     console.log(`🗑️ Cleared ${clearedSamples} samples from buffer`);
-  }
+  }*/
 }

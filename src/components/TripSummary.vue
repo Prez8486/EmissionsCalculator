@@ -17,20 +17,32 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
+  const props = defineProps({
+    tripData: {
+      type: Object,
+      required: true
+    },
+    show: {
+      type: Boolean,
+      default: false
+    }
+  })
 const route = useRoute()
-const router = useRouter()
+  const router = useRouter()
+  const loading = ref(false)
 
-const transportMode = route.query.mode
-const distanceKm = parseFloat(route.query.distanceKm)
+  const transportMode = computed(() => props.tripData?.transportMode || 'N/A')
+  const distanceKm = computed(() => props.tripData?.distance || 0)
+  const durationMs = computed(() => props.tripData?.duration || 0)
 const durationSec = parseInt(route.query.durationSec)
 
-const loading = ref(false)
+
 
 const formattedDuration = computed(() => {
-  const sec = durationSec % 60
-  const min = Math.floor((durationSec / 60) % 60)
-  const hr = Math.floor(durationSec / 3600)
+  const totalSec = Math.floor(durationMs.value / 1000)
+  const hr = Math.floor(totalSec / 3600)
+  const min = Math.floor((totalSec % 3600) / 60)
+  const sec = totalSec % 60
   return `${hr}h ${min}m ${sec}s`
 })
 
@@ -52,9 +64,9 @@ async function saveTrip() {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        transportMode,
-        distanceKm,
-        durationSec,
+        transportMode: transportMode.value,
+        distanceKm: distanceKm.value,
+        durationSec: Math.floor((durationMs.value || 0)/1000),
         emissionKg: Math.max(distanceKm * 0.2, 0.01)
       })
     })

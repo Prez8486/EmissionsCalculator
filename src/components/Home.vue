@@ -1,7 +1,12 @@
 <template>
   <div class="container dashboard-container">
     <h1 class="dashboard-title mb-4">Emissions Dashboard</h1>
+    <div class="home-container">
 
+      <!-- Show MyCarCard only for logged-in users -->
+      <MyCarCard />
+
+    </div>
     <!-- 2x2 Grid for Dashboard Cards -->
     <div class="row g-2">
       <div class="col-md-6" v-for="(card, i) in cards" :key="i">
@@ -41,8 +46,12 @@
 </template>
 
 <script>
+  import MyCarCard from '@/components/MyCar.vue';
 import { API_BASE } from '@/config/apiConfig.js';
-export default {
+  export default {
+    components: {
+      MyCarCard
+    },
   data() {
     return {
       records: [],
@@ -172,5 +181,9 @@ export default {
 }
   body.dark h2, th, td {
     color: #ffffff !important;
+  }
+  .home-container {
+    padding: 20px;
+    text-align: center;
   }
 </style>

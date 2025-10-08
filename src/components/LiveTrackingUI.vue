@@ -19,21 +19,17 @@
 
     <!-- Control Buttons -->
     <div class="controls-section">
-      <button
-        @click="handleStartTrip"
-        :disabled="isActive || loading"
-        class="control-button start-button"
-        :class="{ 'active': isActive }"
-      >
+      <button @click="handleStartTrip"
+              :disabled="isActive || loading"
+              class="control-button start-button"
+              :class="{ 'active': isActive }">
         <span class="button-icon">📍</span>
         {{ isActive ? 'Trip Active' : 'Start Trip' }}
       </button>
 
-      <button
-        @click="handleEndTrip"
-        :disabled="!isActive || loading"
-        class="control-button end-button"
-      >
+      <button @click="handleEndTrip"
+              :disabled="!isActive || loading"
+              class="control-button end-button">
         <span class="button-icon">🏁</span>
         {{ loading ? 'Ending...' : 'End Trip' }}
       </button>
@@ -56,54 +52,12 @@
     </div>
 
     <!-- Additional Form Fields (Car specific) -->
-    <div v-if="trip && trip.transportMode === 'car'" class="additional-fields">
-      <h3>Trip Details</h3>
-
-      <!-- Car Make/Model (populated by plugin) -->
-      <div class="car-fields">
-        <div class="field-group">
-          <label>Car Make:</label>
-          <select
-            :value="trip.data?.vehicleMake || ''"
-            @change="updateMake($event.target.value)"
-            :disabled="!makes.length"
-          >
-            <option value="">{{ makes.length ? 'Select Make' : 'Loading...' }}</option>
-            <option v-for="make in makes" :key="make.make" :value="make.make">
-              {{ make.make }}
-            </option>
-          </select>
-        </div>
-
-        <div class="field-group">
-          <label>Car Model:</label>
-          <select
-            :value="trip.data?.vehicleModel || ''"
-            @change="updateModel($event.target.value)"
-            :disabled="!models.length || !trip.data?.vehicleMake"
-          >
-            <option value="">{{ getModelPlaceholder() }}</option>
-            <option v-for="model in models" :key="model.model" :value="model.model">
-              {{ model.model }}
-            </option>
-          </select>
-        </div>
-
-        <div class="field-group">
-          <label>Extra Load:</label>
-          <select
-            :value="trip.data?.extraLoad || 'none'"
-            @change="updateExtraLoad($event.target.value)"
-          >
-            <option value="none">None</option>
-            <option value="caravan">Caravan</option>
-            <option value="boat">Boat</option>
-            <option value="trailer-light">Trailer (Light)</option>
-            <option value="trailer-medium">Trailer (Medium)</option>
-            <option value="trailer-heavy">Trailer (Heavy)</option>
-          </select>
-        </div>
-      </div>
+    <!-- Car Info Card (fetched from backend) -->
+    <div v-if="car.make" class="car-info-card">
+      <h3>🚗 My Car</h3>
+      <p><strong>Make:</strong> {{ car.make }}</p>
+      <p><strong>Model:</strong> {{ car.model }}</p>
+      <p><strong>Extra Load:</strong> {{ formatExtraLoad(car.extraLoad) }}</p>
     </div>
 
     <!-- GPS Status Indicator -->
@@ -200,7 +154,7 @@ export default {
       this.initializeMap();
     }
     this.checkGPSAvailability();
-    this.loadCarData();
+    this.loadUserCar();
   },
 
   beforeUnmount() {
@@ -260,10 +214,26 @@ export default {
       }
     },
 
-    async loadCarData() {
-      if (this.trip.transportMode === 'car' && this.trip.plugins.carAPI) {
-        // Load makes from plugin
-        this.makes = await this.trip.plugins.carAPI.fetchMakes();
+    async loadUserCar() {
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) return
+        const res = await fetch(`${API_BASE}/users/car`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!res.ok) throw new Error('Failed to load car details')
+        const data = await res.json()
+        if (data.car) {
+          this.car = data.car
+          // Also sync trip data with car info for saving later
+          this.trip.updateData({
+            vehicleMake: this.car.make,
+            vehicleModel: this.car.model,
+            extraLoad: this.car.extraLoad
+          })
+        }
+      } catch (err) {
+        console.error('Error fetching car details:', err)
       }
     },
 
@@ -297,22 +267,7 @@ export default {
     },
 
     // Car-specific methods
-    async updateMake(make) {
-      this.trip.updateData({ vehicleMake: make, vehicleModel: '' });
-      if (make && this.trip.plugins.carAPI) {
-        this.models = await this.trip.plugins.carAPI.fetchModels(make);
-      } else {
-        this.models = [];
-      }
-    },
-
-    updateModel(model) {
-      this.trip.updateData({ vehicleModel: model });
-    },
-
-    updateExtraLoad(extraLoad) {
-      this.trip.updateData({ extraLoad });
-    },
+    
 
     getModelPlaceholder() {
       if (!this.trip.data.vehicleMake) {
