@@ -67,7 +67,8 @@ export const transportConfig = {
       distanceKm: data.distance,
       trips: data.trips,
       extraLoad: data.extraLoad,
-      emissionKg: data.emissionKg
+      emissionKg: data.emissionKg,
+      path: data.path
     }),
 
     // Emissions Calculation Payload

@@ -9,6 +9,7 @@ export class BaseTrip {
 
     this.transportMode = transportMode;
     this.userId = userId;
+    this.path = [];
     this.options = options;
 
     this.config = getTransportConfig(transportMode);
