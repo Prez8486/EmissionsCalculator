@@ -86,7 +86,7 @@
               </template>
             </td>
             <td class="emissions-cell">
-              <span class="emissions-value">{{ r.emissionKg }}</span>
+              <span class="emissions-value">{{ (r?.emissionKg ?? 0).toFixed(3) }}</span>
             </td>
             <td>
               <button @click="selected = r" class="view-btn">
