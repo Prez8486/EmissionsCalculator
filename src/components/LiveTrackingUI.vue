@@ -53,11 +53,11 @@
 
     <!-- Additional Form Fields (Car specific) -->
     <!-- Car Info Card (fetched from backend) -->
-    <div v-if="car.make" class="car-info-card">
+    <div v-if="car && car.make" class="car-info-card">
       <h3>🚗 My Car</h3>
-      <p><strong>Make:</strong> {{ car.make }}</p>
-      <p><strong>Model:</strong> {{ car.model }}</p>
-      <p><strong>Extra Load:</strong> {{ formatExtraLoad(car.extraLoad) }}</p>
+      <p><strong>Make:</strong> {{ car?.make || 'NA' }}</p>
+      <p><strong>Model:</strong> {{ car?.model || 'NA' }}</p>
+      <p><strong>Extra Load:</strong> {{ formatExtraLoad(car?.extraLoad) }}</p>
     </div>
 
     <!-- GPS Status Indicator -->
@@ -69,6 +69,7 @@
 </template>
 
 <script>
+import { API_BASE } from '@/config/apiConfig';
 export default {
   name: 'LiveTrackingUI',
 
@@ -97,9 +98,8 @@ export default {
       tripStartTime: null,
       tripDuration: 0,
       intervalId: null,
-      makes: [],
-      models: [],
-      gpsStatus: 'checking' // checking, available, unavailable, error
+      gpsStatus: 'checking', // checking, available, unavailable, error
+      car: {make: '', model: '', extraLoad: ''}
     };
   },
 
@@ -218,7 +218,7 @@ export default {
       try {
         const token = localStorage.getItem('token')
         if (!token) return
-        const res = await fetch(`${API_BASE}/users/car`, {
+        const res = await fetch(`${API_BASE}/auth/car`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         if (!res.ok) throw new Error('Failed to load car details')
@@ -235,6 +235,17 @@ export default {
       } catch (err) {
         console.error('Error fetching car details:', err)
       }
+    },
+    formatExtraLoad(load) {
+      const map = {
+        none: 'None',
+        caravan: 'Caravan',
+        boat: 'Boat',
+        'trailer-light': 'Trailer (Light)',
+        'trailer-medium': 'Trailer (Medium)',
+        'trailer-heavy': 'Trailer (Heavy)'
+      }
+      return map[load] || 'Unknown'
     },
 
     async handleStartTrip() {

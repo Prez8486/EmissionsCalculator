@@ -31,7 +31,7 @@
       @update-field="updateField"
       @calculate="calculateEmissions"
       @save-trip="saveTrip"
-      @end-trip="endTrip"
+      
     />
 
     <!-- AI Prediction Display (Live Mode Only) -->
@@ -53,12 +53,12 @@
     </div>
 
     <!-- Emissions Results (Both Modes) -->
-    <EmissionsSummary
+    <!--<EmissionsSummary
       v-if="tripState.emission"
       :emission="tripState.emission"
       :transport-mode="transportMode"
       :trip-data="tripState.data"
-    />
+    />-->
 
 
 
@@ -281,22 +281,7 @@ export default {
       if (success) {
         console.log("End trip success");
         // In live mode, automatically save the trip first
-        if (this.isLiveMode) {
-          const saveSuccess = await this.trip.saveTrip();
-          const duration = this.calculateTripDuration();
-          const distance = this.tripState.data.distance || 0;
-          const emission = this.tripState.emission || 0;
-
-          console.log('Trip data for summary:', {
-            duration,
-            distance,
-            emission,
-            tripState: this.tripState
-          });
-          if (saveSuccess) {
-            this.showMessage('Trip saved successfully!', 'success');
-          }
-        }
+        
 
         // Calculate trip duration with proper fallbacks
         const duration = this.calculateTripDuration();
@@ -502,23 +487,30 @@ export default {
         this.$router.push('/home');
       }
     },
+    async saveTripFromSummary() {
+      try {
+        if (!this.trip) return;
 
-    saveTripFromSummary() {
-      // This is only for manual mode since live mode auto-saves
-      if (!this.isLiveMode && this.trip && this.trip.saveTrip) {
-        this.trip.saveTrip().then(success => {
-          if (success) {
-            this.showMessage('Trip saved from summary!', 'success');
-            this.showTripSummary = false;
-            this.$router.push('/home');
-          }
-        });
-      } else {
-        // For live mode, just close and navigate
-        this.closeTripSummary();
+        this.showMessage("Saving trip...", "info");
+
+        const success = await this.trip.saveTrip();
+
+        if (success) {
+          this.showMessage("✅ Trip saved successfully!", "success");
+          this.showTripSummary = false;
+
+          // Redirect to home after 2 seconds
+          setTimeout(() => {
+            this.$router.push("/home");
+          }, 2000);
+        } else {
+          this.showMessage("❌ Failed to save trip.", "warning");
+        }
+      } catch (err) {
+        console.error("Error saving trip:", err);
+        this.showMessage("⚠ Error saving trip. Check console.", "warning");
       }
     },
-
     getTransportIcon(mode) {
       const icons = {
         car: '🚗',
