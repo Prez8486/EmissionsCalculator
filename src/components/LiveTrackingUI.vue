@@ -53,7 +53,7 @@
 
     <!-- Additional Form Fields (Car specific) -->
     <!-- Car Info Card (fetched from backend) -->
-    <div v-if="car && car.make" class="car-info-card">
+    <div v-if="trip?.transportMode === 'car' && car && car.make" class="car-info-card">
       <h3>🚗 My Car</h3>
       <p><strong>Make:</strong> {{ car?.make || 'NA' }}</p>
       <p><strong>Model:</strong> {{ car?.model || 'NA' }}</p>

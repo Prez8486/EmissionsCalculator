@@ -168,7 +168,7 @@ export class LiveTrip extends BaseTrip {
 
       if (calculated) {
         // AUTO-SAVE for live trips (this is the key difference from manual trips)
-        const saved = await this.saveTrip();
+        const saved = true;
 
         if (saved) {
           this.onStateChange({

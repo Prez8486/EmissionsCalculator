@@ -123,6 +123,8 @@ export default {
         loading: false,
         emission: 0
       },
+      tripEnding: false,
+      tripSaved: false,
       plugins: {},
       isLiveMode: false,
       statusMessage: '',
@@ -274,6 +276,8 @@ export default {
     },
 
     async endTrip() {
+      if (this.tripEnding) return; // prevent double-clicks
+      this.tripEnding = true;
       console.log("End trip");
       this.tripEndTime = Date.now();
       const success = await this.trip.endTrip();
@@ -488,6 +492,8 @@ export default {
       }
     },
     async saveTripFromSummary() {
+      if (this.tripSaved) return; // prevent double saves
+      this.tripSaved = true;
       try {
         if (!this.trip) return;
 

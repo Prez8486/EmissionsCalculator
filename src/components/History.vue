@@ -47,7 +47,7 @@
         <h3>Trip History</h3>
         <div class="total-emissions">
           <span class="total-label">Total Filtered Emissions:</span>
-          <span class="total-value">{{ totalEmissions.toFixed(3) }} tonnes</span>
+          <span class="total-value">{{ totalEmissions.toFixed(3) }} kg</span>
         </div>
       </div>
 
@@ -57,7 +57,7 @@
             <th>Date</th>
             <th>Mode</th>
             <th>Details</th>
-            <th>Emissions (tonnes)</th>
+            <th>Emissions (kg)</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -86,7 +86,7 @@
               </template>
             </td>
             <td class="emissions-cell">
-              <span class="emissions-value">{{ (r.emissionKg / 1000).toFixed(3) }}</span>
+              <span class="emissions-value">{{ r.emissionKg }}</span>
             </td>
             <td>
               <button @click="selected = r" class="view-btn">

@@ -123,8 +123,8 @@ export class BaseTrip {
         case 'bus':
           endpoint = `${API_BASE}/emissions/bus/emissions`;
           break;
-        case 'train':
-          endpoint = `${API_BASE}/emissions/train/emissions`;
+        case 'metro':
+          endpoint = `${API_BASE}/emissions/metro/emissions`;
           break;
         case 'tram':
           endpoint = `${API_BASE}/emissions/tram/emissions`;
