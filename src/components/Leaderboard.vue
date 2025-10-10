@@ -59,7 +59,7 @@
           totalEmission: emission
         };
       })
-      .sort((a, b) => b.totalEmission - a.totalEmission); // ascending
+      .sort((a, b) => a.totalEmission - b.totalEmission); // ascending
   } else {
     console.warn("Invalid leaderboard format:", data);
   }
