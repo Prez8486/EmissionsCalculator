@@ -22,30 +22,43 @@
 </template>
 
 <script>
-import { API_BASE } from '@/config/apiConfig.js';
-export default {
-  data() {
-    return {
-      leaders: []
-    };
-  },
-  async mounted() {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/emissions/leaderboard`, {
-        headers: {
-          Authorization: `Bearer ${token}`
+  import { API_BASE } from '@/config/apiConfig.js';
+
+  export default {
+    data() {
+      return {
+        leaders: []
+      };
+    },
+    async mounted() {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${ API_BASE }/emissions/leaderboard`, {
+          headers: {
+            Authorization: `Bearer ${ token }`
         }
       });
-      const data = await res.json();
-      if (data.leaderboard) {
-        this.leaders = data.leaderboard.sort((a, b) => a.totalEmission - b.totalEmission);
-      }
-    } catch (err) {
-      console.error("Failed to load leaderboard:", err);
-    }
+
+    const data = await res.json();
+
+    if(Array.isArray(data.leaderboard)) {
+    // 🟩 Convert totalEmission to number safely before sorting
+    this.leaders = data.leaderboard
+      .map(user => ({
+        ...user,
+        totalEmission: Number(user.totalEmission) || 0
+      }))
+      .sort((a, b) => a.totalEmission - b.totalEmission); // ascending
+  } else {
+    console.warn("Invalid leaderboard format:", data);
   }
-};</script>
+
+    } catch (err) {
+    console.error("❌ Failed to load leaderboard:", err);
+  }
+  }
+};
+</script>
 
 <style scoped>
   .leaderboard {

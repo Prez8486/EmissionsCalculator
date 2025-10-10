@@ -148,6 +148,7 @@ export class LiveTrip extends BaseTrip {
               tripId: this.tripId,
               distanceKm: this.data.distance,
               durationSeconds: Math.floor((Date.now() - Date.now()) / 1000), // You'll need to track start time
+              path: this.path,
               finalPrediction: this.lastPrediction
             })
           });
@@ -200,8 +201,9 @@ export class LiveTrip extends BaseTrip {
     };
 
     this.currentPosition = newPosition;
+    
     this.path.push([newPosition.lat, newPosition.lng]);
-
+    console.log(this.path);
     // Update map if available
     if (this.map && this.isActive) {
       this.updateMap(newPosition);

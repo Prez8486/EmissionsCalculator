@@ -197,7 +197,15 @@ export class BaseTrip {
       this.onStateChange({ loading: true });
 
       const payload = this.config.savePayload(this.data);
+      if (this.path && this.path.length > 0) {
+        payload.path = this.path;
+      }
 
+
+      if (this.totalDistance || this.data.distanceKm) {
+        payload.distanceKm = this.totalDistance || this.data.distanceKm;
+      }
+      payload.emissionKg = this.data.emissionKg || (this.emission * 1000);
       const response = await fetch(`${API_BASE}/emissions/log`, {
         method: 'POST',
         headers: {

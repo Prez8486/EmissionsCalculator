@@ -285,12 +285,15 @@ export default {
       if (success) {
         console.log("End trip success");
         // In live mode, automatically save the trip first
-        
+        const emissionCalculated = await this.trip.calculateEmissions();
+        if (!emissionCalculated) {
+          this.showMessage("⚠ Could not calculate emissions automatically.", "warning");
+        }
 
         // Calculate trip duration with proper fallbacks
         const duration = this.calculateTripDuration();
         const distance = this.tripState.data.distance || 0;
-        const emission = this.tripState.emission || 0;
+        const emission = this.tripState.emission || this.trip.data.emissionKg || 0;
 
         console.log('Trip data for summary:', {
           duration,
