@@ -48,7 +48,7 @@
         ...user,
         totalEmission: Number(user.totalEmission) || 0
       }))
-      .sort((a, b) => a.totalEmission - b.totalEmission); // ascending
+      .sort((a, b) => b.totalEmission - a.totalEmission); // ascending
   } else {
     console.warn("Invalid leaderboard format:", data);
   }
