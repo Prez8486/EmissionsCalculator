@@ -47,7 +47,7 @@
         <h3>Trip History</h3>
         <div class="total-emissions">
           <span class="total-label">Total Filtered Emissions:</span>
-          <span class="total-value">{{ totalEmissions.toFixed(3) }} tonnes</span>
+          <span class="total-value">{{ totalEmissions.toFixed(3) }} kg</span>
         </div>
       </div>
 
@@ -57,7 +57,7 @@
             <th>Date</th>
             <th>Mode</th>
             <th>Details</th>
-            <th>Emissions (tonnes)</th>
+            <th>Emissions (kg)</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -86,7 +86,7 @@
               </template>
             </td>
             <td class="emissions-cell">
-              <span class="emissions-value">{{ (r.emissionKg / 1000).toFixed(3) }}</span>
+              <span class="emissions-value">{{ (r?.emissionKg ?? 0).toFixed(3) }}</span>
             </td>
             <td>
               <button @click="selected = r" class="view-btn">
@@ -113,6 +113,7 @@
 <script>
   import L from "leaflet";
   import { Bar, Line } from 'vue-chartjs';
+  import { API_BASE } from '@/config/apiConfig';
   import {
     Chart as ChartJS,
     Title,
@@ -181,6 +182,7 @@
       },
       lineChartData() {
         if (!this.filteredRecords.length) return null;
+
         const emissionsByDay = {};
         this.filteredRecords.forEach(r => {
           const d = new Date(r.date);
@@ -189,6 +191,7 @@
         });
         const sorted = Object.keys(emissionsByDay).sort();
         if (!sorted.length) return null;
+
         return {
           labels: sorted.map(d => new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })),
           datasets: [{
@@ -306,9 +309,7 @@
       async fetchRecords() {
         try {
           const token = localStorage.getItem('token');
-
-          const res = await fetch('https://emissionscalculatorbackend.duckdns.org/api/emissions/history', {
-
+          const res = await fetch(`${API_BASE}/emissions/history`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (!res.ok) {
