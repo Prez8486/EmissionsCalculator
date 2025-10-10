@@ -11,6 +11,7 @@
         <router-link to="/Comparison">Comparison</router-link>
         <button @click="showSettings = true" class="settings-btn">Settings</button>
         <router-link to="/select-mode" class="website-addtrip">+</router-link>
+        <!-- <router-link to="/base-form" class="website-plus-button">-</router-link> -->
       </nav>
     </header>
 
@@ -49,7 +50,7 @@
       </router-link>
 
       <!-- Center Add Trip Button -->
-      <router-link to="/select-mode" class="nav-item center-button" active-class="active">
+      <router-link to="/trip-mode-selection" class="nav-item center-button" active-class="active">
         <div class="center-icon">+</div>
       </router-link>
 
@@ -57,10 +58,15 @@
         <div class="nav-icon">🏆</div>
         <span class="nav-label">Leaderboard</span>
       </router-link>
-      
+
       <router-link to="/comparison" class="nav-item" active-class="active">
         <div class="nav-icon">⚖️</div>
         <span class="nav-label">Comparison</span>
+      </router-link>
+
+      <router-link to="/base-form" class="nav-item" active-class="active">
+        <div class="nav-icon">🏆</div>
+        <span class="nav-label">Testing Modes</span>
       </router-link>
     </nav>
 
@@ -142,6 +148,7 @@ import { Capacitor } from '@capacitor/core';
       }
     },
     mounted() {
+      console.log("Vue App mounted");
       this.isAndroid = /Android/i.test(navigator.userAgent);
     },
     watch: {
