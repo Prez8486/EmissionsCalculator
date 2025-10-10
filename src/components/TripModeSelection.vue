@@ -51,7 +51,7 @@ function goToCarDetails() {
 }
 
 function startTrip() {
-  router.push({ name: 'TripStart', query: { mode: selectedMode.value } })
+  router.push({ name: 'TripTracking', query: { mode: selectedMode.value } })
 }
 </script>
 

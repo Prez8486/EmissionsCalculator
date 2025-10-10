@@ -13,7 +13,10 @@
   </div>
 </template>
 
-<script>export default {
+<script>
+import { API_BASE } from '@/config/apiConfig';
+
+export default {
     data() {
       return {
         name: '',
@@ -26,11 +29,11 @@
     methods: {
       async register() {
         try {
-          const res = await fetch('http://136.186.108.171/api/auth/register', {
+          const res = await fetch(`${API_BASE}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              name: this.name,           // ✅ Include full name
+              name: this.name,
               username: this.username,
               email: this.email,
               password: this.password

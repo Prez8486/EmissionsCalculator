@@ -1,7 +1,12 @@
 <template>
   <div class="container dashboard-container">
     <h1 class="dashboard-title mb-4">Emissions Dashboard</h1>
+    <div class="home-container">
 
+      <!-- Show MyCarCard only for logged-in users -->
+      <MyCarCard />
+
+    </div>
     <!-- 2x2 Grid for Dashboard Cards -->
     <div class="row g-2">
       <div class="col-md-6" v-for="(card, i) in cards" :key="i">
@@ -30,7 +35,7 @@
           </p>
           <p>
             <strong>Emissions:</strong>
-            {{ (parseFloat(lastTrip.emissionKg || lastTrip.emission) / 1000).toFixed(3) + ' tonnes ' }}
+            {{ (parseFloat(lastTrip.emissionKg || lastTrip.emission) || 0).toFixed(2) + ' kg' }}
           </p>
 
 
@@ -41,7 +46,12 @@
 </template>
 
 <script>
-export default {
+  import MyCarCard from '@/components/MyCar.vue';
+import { API_BASE } from '@/config/apiConfig.js';
+  export default {
+    components: {
+      MyCarCard
+    },
   data() {
     return {
       records: [],
@@ -91,7 +101,7 @@ export default {
   async mounted() {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://136.186.108.171/api/emissions/history', {
+      const res = await fetch(`${API_BASE}/emissions/history`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -171,5 +181,9 @@ export default {
 }
   body.dark h2, th, td {
     color: #ffffff !important;
+  }
+  .home-container {
+    padding: 20px;
+    text-align: center;
   }
 </style>

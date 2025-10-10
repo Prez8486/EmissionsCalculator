@@ -2,9 +2,20 @@
   <div class="form-container">
     <h2>Car Emission Calculator + Trip Tracker</h2>
 
-    <!-- Live Trip Tracking Section -->
+    <!-- Toggle -->
+    <div class="toggle-container">
+      <label class="switch">
+        <input type="checkbox" v-model="pickDropMode" />
+        <span class="slider"></span>
+      </label>
+      <span>{{ pickDropMode ? "Pick & Drop Mode" : "Live GPS Tracking" }}</span>
+    </div>
+
+    <!-- Map -->
     <div id="map" class="map"></div>
-    <div class="buttons">
+
+    <!-- GPS Buttons -->
+    <div v-if="!pickDropMode" class="buttons">
       <button type="button" @click="startTrip" :disabled="tracking">Start Trip</button>
       <button type="button" @click="endTrip" :disabled="!tracking">End Trip</button>
     </div>
@@ -87,7 +98,11 @@
         watchId: null,
         path: [],
         map: null,
-        polyline: null
+        polyline: null,
+
+        // Toggle
+        pickDropMode: false,
+        clickMarkers: []
       };
     },
     async mounted() {
@@ -96,7 +111,46 @@
       this.loadMap();
     },
     methods: {
-      // === LIVE TRACKING ===
+      // === TOGGLE PICK & DROP ===
+      enablePickDrop() {
+        if (!this.map) return;
+        this.map.on("click", this.handleMapClick);
+      },
+      disablePickDrop() {
+        if (!this.map) return;
+        this.map.off("click", this.handleMapClick);
+        this.clearClickMarkers();
+      },
+      handleMapClick(e) {
+        
+        if (this.clickMarkers.length >= 2) {
+          this.clearClickMarkers();
+        }
+        const marker = L.marker(e.latlng).addTo(this.map);
+        this.clickMarkers.push(marker);
+
+        if (this.clickMarkers.length === 2) {
+          const start = this.clickMarkers[0].getLatLng();
+          const end = this.clickMarkers[1].getLatLng();
+          const distance = start.distanceTo(end) / 1000;
+          this.km = parseFloat(distance.toFixed(2));
+          this.polyline.setLatLngs([start, end]);
+          this.path = [
+            [start.lat, start.lng],
+            [end.lat, end.lng]
+          ];
+         
+        }
+      },
+      clearClickMarkers() {
+        this.clickMarkers.forEach(m => this.map.removeLayer(m));
+        this.clickMarkers = [];
+        this.polyline.setLatLngs([]);
+        this.km = 0;
+        this.path = [];
+      },
+
+      // === GPS LIVE TRACKING ===
       startTrip() {
         this.path = [];
         this.km = 0;
@@ -112,7 +166,6 @@
         this.tracking = false;
         if (this.watchId) navigator.geolocation.clearWatch(this.watchId);
 
-        // Final distance calculation
         let total = 0;
         for (let i = 1; i < this.path.length; i++) {
           const prev = L.latLng(this.path[i - 1]);
@@ -122,6 +175,8 @@
         const kmValue = (total / 1000).toFixed(2);
         this.km = parseFloat(kmValue);
         localStorage.setItem("carTripDistance", kmValue);
+        console.log(`Trip ended. Path has ${this.path.length} points.`, this.path);
+
       },
       trackPosition(pos) {
         const latlng = [pos.coords.latitude, pos.coords.longitude];
@@ -134,7 +189,6 @@
           this.map.panTo(leafletLatLng);
         }
 
-        // live update distance
         let total = 0;
         for (let i = 1; i < this.path.length; i++) {
           const prev = L.latLng(this.path[i - 1]);
@@ -143,6 +197,8 @@
         }
         this.km = parseFloat((total / 1000).toFixed(2));
       },
+
+      // === MAP INIT ===
       loadMap() {
         navigator.geolocation.getCurrentPosition(pos => {
           const center = [pos.coords.latitude, pos.coords.longitude];
@@ -151,13 +207,19 @@
             attribution: "© OpenStreetMap"
           }).addTo(this.map);
           this.polyline = L.polyline([], { color: "red" }).addTo(this.map);
+
+          // React to toggle
+          this.$watch("pickDropMode", val => {
+            if (val) this.enablePickDrop();
+            else this.disablePickDrop();
+          });
         });
       },
 
-      // === API CALLS ===
+      // === API ===
       async fetchMakes() {
         try {
-          const res = await fetch("http://136.186.108.171/api/emissions/car/makes");
+          const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/car/makes");
           const result = await res.json();
           this.makes = result.data || [];
         } catch (err) {
@@ -167,7 +229,7 @@
       },
       async fetchModels() {
         try {
-          const res = await fetch(`http://136.186.108.171/api/emissions/car/models/${this.selectedMake}`);
+          const res = await fetch(`https://emissionscalculatorbackend.duckdns.org/api/emissions/car/models/${this.selectedMake}`);
           const result = await res.json();
           this.models = result.data || [];
         } catch (err) {
@@ -182,7 +244,7 @@
         }
         try {
           this.loading = true;
-          const res = await fetch("http://136.186.108.171/api/emissions/car/emissions", {
+          const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/car/emissions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -217,6 +279,8 @@
           return;
         }
 
+        console.log(`Saving trip. Path has ${this.path.length} points.`, this.path);
+
         try {
           const payload = {
             transportMode: "car",
@@ -225,10 +289,13 @@
             distanceKm: this.km,
             trips: this.trips,
             extraLoad: this.extraLoadType,
-            emissionKg: this.emissionPerTrip * 1000
+            emissionKg: this.emissionPerTrip * 1000,
+            path: this.path,
           };
 
-          const res = await fetch("http://136.186.108.171/api/emissions/log", {
+
+          const res = await fetch("https://emissionscalculatorbackend.duckdns.org/api/emissions/log", {
+
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -293,6 +360,15 @@
     border-radius: 5px;
   }
 
+  button:hover {
+    background-color: #0056b3;
+  }
+
+  button:disabled {
+    background: #a6d1ff;
+    cursor: not-allowed;
+  }
+
   .result {
     margin-top: 2rem;
     padding: 1.5rem;
@@ -307,7 +383,60 @@
     gap: 1rem;
     margin-bottom: 1rem;
   }
-  body.dark label {
-    color: #000000 !important;
+
+  .toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 24px;
+  }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    border-radius: 24px;
+    transition: 0.4s;
+  }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: 0.4s;
+    }
+
+  input:checked + .slider {
+    background-color: #007bff;
+  }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+
+  body.dark label switch span {
+    color: #000 !important;
   }
 </style>
