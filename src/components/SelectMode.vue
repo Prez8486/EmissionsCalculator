@@ -7,7 +7,7 @@
           v-for="mode in modes"
           :key="mode.value"
           class="btn"
-          :to="{ path: '/base-form', query: { mode: mode.value } }"
+          :to="getModeRoute(mode)"
         >
         <i :class="['fas', mode.icon, 'icon']"></i>
           <span class="desc">{{ mode.label }}</span>
@@ -78,7 +78,15 @@ export default {
     },
     prevMode() {
       this.currentIndex = (this.currentIndex - 1 + this.modes.length) % this.modes.length;
+    },
+    getModeRoute(mode) {
+    // ✈ Special case for flights
+    if (mode.value === 'flight') {
+      return { path: '/form/flight' };
     }
+    // 🚗 Others go to base-form
+    return { path: '/base-form', query: { mode: mode.value } };
+  }
   },
   created() {
     this.isNative = Capacitor.isNativePlatform();

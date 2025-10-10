@@ -13,6 +13,8 @@ import ChangePassword from '../components/ChangePassword.vue';
 import BaseTransportForm from '@/components/BaseTransportForm.vue';
 import SelectMode from '../components/SelectMode.vue';
 import Comparison from '../components/Comparison.vue';
+import CarDetails from '../components/CarDetails.vue';
+
 
 const routes = [
   { path: '/', component: Login },
@@ -29,6 +31,8 @@ const routes = [
   { path: '/select-mode', component: SelectMode },
   { path: '/comparison', component: Comparison },
   { path: '/changepassword', component: ChangePassword },
+  { path: '/mycar', component: CarDetails },
+  
   {
     path: '/base-form',
     component: BaseTransportForm,

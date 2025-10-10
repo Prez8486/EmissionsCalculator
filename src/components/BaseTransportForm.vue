@@ -31,6 +31,7 @@
       @update-field="updateField"
       @calculate="calculateEmissions"
       @save-trip="saveTrip"
+      
     />
 
     <!-- AI Prediction Display (Live Mode Only) -->
@@ -52,12 +53,12 @@
     </div>
 
     <!-- Emissions Results (Both Modes) -->
-    <EmissionsSummary
+    <!--<EmissionsSummary
       v-if="tripState.emission"
       :emission="tripState.emission"
       :transport-mode="transportMode"
       :trip-data="tripState.data"
-    />
+    />-->
 
 
 
@@ -82,6 +83,7 @@
 </template>
 
 <script>
+  import { nextTick } from 'vue';
 import { LiveTrip } from '../models/LiveTrip.js';
 import { ManualTrip } from '../models/ManualTrip.js';
 import { CarAPIPlugin } from '../plugins/carAPI.js';
@@ -121,6 +123,8 @@ export default {
         loading: false,
         emission: 0
       },
+      tripEnding: false,
+      tripSaved: false,
       plugins: {},
       isLiveMode: false,
       statusMessage: '',
@@ -272,22 +276,24 @@ export default {
     },
 
     async endTrip() {
+      if (this.tripEnding) return; // prevent double-clicks
+      this.tripEnding = true;
+      console.log("End trip");
       this.tripEndTime = Date.now();
       const success = await this.trip.endTrip();
-
+      console.log(success);
       if (success) {
+        console.log("End trip success");
         // In live mode, automatically save the trip first
-        if (this.isLiveMode) {
-          const saveSuccess = await this.trip.saveTrip();
-          if (saveSuccess) {
-            this.showMessage('Trip saved successfully!', 'success');
-          }
+        const emissionCalculated = await this.trip.calculateEmissions();
+        if (!emissionCalculated) {
+          this.showMessage("⚠ Could not calculate emissions automatically.", "warning");
         }
 
         // Calculate trip duration with proper fallbacks
         const duration = this.calculateTripDuration();
         const distance = this.tripState.data.distance || 0;
-        const emission = this.tripState.emission || 0;
+        const emission = this.tripState.emission || this.trip.data.emissionKg || 0;
 
         console.log('Trip data for summary:', {
           duration,
@@ -378,7 +384,33 @@ export default {
       const success = await this.trip.calculateEmissions();
       if (success) {
         this.showMessage('Emissions calculated successfully!', 'success');
-      }
+
+        // Wait for DOM to finish updating (prevents parentNode null error)
+        await nextTick();
+
+        // Safely compute display data
+        const distance = this.tripState.data.distance || 0;
+        const emission = this.tripState.emission || 0;
+        const duration = this.tripState.data.duration || 0;
+
+        // Build formatted summary object
+        this.tripSummaryData = {
+          transportMode: this.transportMode,
+          distance,
+          emission,
+          duration,
+          aiPrediction: this.aiPrediction,
+          distanceDisplay: `${ distance.toFixed(2) } km`,
+            emissionDisplay: `${ emission.toFixed(3) } kg CO₂`,
+        durationDisplay: this.formatDurationString(duration),
+          averageSpeedDisplay: this.calculateAverageSpeedDisplay(distance, duration)
+      };
+
+      // Show trip summary modal (v-show safer than v-if)
+      this.showTripSummary = true;
+    } else {
+      this.showMessage('Failed to calculate emissions. Please check your inputs.', 'warning');
+    }
     },
 
     async saveTrip() {
@@ -462,23 +494,32 @@ export default {
         this.$router.push('/home');
       }
     },
+    async saveTripFromSummary() {
+      if (this.tripSaved) return; // prevent double saves
+      this.tripSaved = true;
+      try {
+        if (!this.trip) return;
 
-    saveTripFromSummary() {
-      // This is only for manual mode since live mode auto-saves
-      if (!this.isLiveMode && this.trip && this.trip.saveTrip) {
-        this.trip.saveTrip().then(success => {
-          if (success) {
-            this.showMessage('Trip saved from summary!', 'success');
-            this.showTripSummary = false;
-            this.$router.push('/home');
-          }
-        });
-      } else {
-        // For live mode, just close and navigate
-        this.closeTripSummary();
+        this.showMessage("Saving trip...", "info");
+
+        const success = await this.trip.saveTrip();
+
+        if (success) {
+          this.showMessage("✅ Trip saved successfully!", "success");
+          this.showTripSummary = false;
+
+          // Redirect to home after 2 seconds
+          setTimeout(() => {
+            this.$router.push("/home");
+          }, 2000);
+        } else {
+          this.showMessage("❌ Failed to save trip.", "warning");
+        }
+      } catch (err) {
+        console.error("Error saving trip:", err);
+        this.showMessage("⚠ Error saving trip. Check console.", "warning");
       }
     },
-
     getTransportIcon(mode) {
       const icons = {
         car: '🚗',

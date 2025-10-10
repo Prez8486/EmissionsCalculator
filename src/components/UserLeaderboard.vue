@@ -61,7 +61,7 @@ export default {
         const data = await res.json();
         if (data.leaderboard) {
           // Fix: Sort by highest emissions first (descending order)
-          this.leaders = data.leaderboard.sort((a, b) => b.totalEmission - a.totalEmission);
+          this.leaders = data.leaderboard.sort((a, b) => a.totalEmission - b.totalEmission);
         }
       } catch (err) {
         console.error("Failed to load leaderboard:", err);
