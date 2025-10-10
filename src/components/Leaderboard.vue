@@ -44,10 +44,21 @@
     if(Array.isArray(data.leaderboard)) {
     // 🟩 Convert totalEmission to number safely before sorting
     this.leaders = data.leaderboard
-      .map(user => ({
-        ...user,
-        totalEmission: Number(user.totalEmission) || 0
-      }))
+      .map(user => {
+        let emission = 0;
+
+        // Extract number safely from totalEmission field
+        if (user.totalEmission !== undefined && user.totalEmission !== null) {
+          // Handle possible strings like "1.23" or "1.23 tonnes"
+          const match = String(user.totalEmission).match(/[\d.]+/);
+          emission = match ? parseFloat(match[0]) : 0;
+        }
+
+        return {
+          ...user,
+          totalEmission: emission
+        };
+      })
       .sort((a, b) => b.totalEmission - a.totalEmission); // ascending
   } else {
     console.warn("Invalid leaderboard format:", data);
