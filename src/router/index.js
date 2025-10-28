@@ -14,6 +14,8 @@ import BaseTransportForm from '@/components/BaseTransportForm.vue';
 import SelectMode from '../components/SelectMode.vue';
 import Comparison from '../components/Comparison.vue';
 import CarDetails from '../components/CarDetails.vue';
+import InformationPage from '../components/InformationPage.vue';
+import FriendsPage from '../components/FriendsPage.vue';
 
 
 const routes = [
@@ -32,6 +34,8 @@ const routes = [
   { path: '/comparison', component: Comparison },
   { path: '/changepassword', component: ChangePassword },
   { path: '/mycar', component: CarDetails },
+  { path: '/info', component: InformationPage },
+  { path: '/friendspage', component: FriendsPage },
   
   {
     path: '/base-form',
