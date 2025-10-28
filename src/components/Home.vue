@@ -47,7 +47,7 @@
 
 <script>
   import MyCarCard from '@/components/MyCar.vue';
-import { API_BASE } from '@/config/apiConfig.js';
+  import { API_BASE } from '@/config/apiConfig.js';
   export default {
     components: {
       MyCarCard
