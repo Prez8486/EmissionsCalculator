@@ -4,6 +4,24 @@
     <div class="map-section">
       <div id="tracking-map" class="tracking-map" ref="mapContainer"></div>
 
+      <!-- Destination Search Bar -->
+      <DestinationSearchBar
+        v-if="!isActive"
+        :current-location="userLocation"
+        @destination-selected="handleDestinationSelected"
+        @destination-cleared="handleDestinationCleared"
+      />
+      <!-- Route Overlay on Map -->
+      <RouteOverlay
+        v-if="map && calculatedRoutes"
+        :map="map"
+        :fastest-route="calculatedRoutes.fastest"
+        :greenest-route="calculatedRoutes.greenest"
+        :selected-route="selectedRouteType"
+        :show-greenest="calculatedRoutes.show_alternative"
+        @route-clicked="handleRouteClicked"
+      />
+
       <!-- Map Overlay Info -->
       <div class="map-overlay">
         <div class="distance-display">
@@ -16,6 +34,21 @@
         </div>
       </div>
     </div>
+
+    <!-- Transport Mode Selector -->
+    <TransportModeSelector
+      v-if="showRouteSelection"
+      v-model="enabledModes"
+    />
+    <!-- Route Comparison Card -->
+    <RouteComparisonCard
+      v-if="showRouteSelection"
+      :fastest="calculatedRoutes.fastest"
+      :greenest="calculatedRoutes.greenest"
+      :show-greenest="calculatedRoutes.show_alternative"
+      :selected="selectedRouteType"
+      @route-selected="handleRouteSelected"
+    />
 
     <!-- Control Buttons -->
     <div class="controls-section">
@@ -33,6 +66,12 @@
         <span class="button-icon">🏁</span>
         {{ loading ? 'Ending...' : 'End Trip' }}
       </button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div v-if="calculating" class="loading-overlay">
+      <div class="spinner"></div>
+      <p>Calculating routes...</p>
     </div>
 
     <!-- Trip Stats (when active) -->
@@ -70,8 +109,20 @@
 
 <script>
 import { API_BASE } from '@/config/apiConfig';
+import PlannedRoute from '@/models/PlannedRoute';
+import DestinationSearchBar from '@/components/LiveTracking/DestinationSearchBar.vue';
+import TransportModeSelector from '@/components/LiveTracking/TransportModeSelector.vue';
+import RouteComparisonCard from '@/components/LiveTracking/RouteComparisonCard.vue';
+import RouteOverlay from '@/components/LiveTracking/RouteOverlay.vue';
 export default {
   name: 'LiveTrackingUI',
+
+  components: {
+    DestinationSearchBar,
+    TransportModeSelector,
+    RouteComparisonCard,
+    RouteOverlay
+  },
 
   props: {
     trip: {
@@ -99,7 +150,16 @@ export default {
       tripDuration: 0,
       intervalId: null,
       gpsStatus: 'checking', // checking, available, unavailable, error
-      car: {make: '', model: '', extraLoad: ''}
+      car: {make: '', model: '', extraLoad: ''},
+
+      //Route Planning State
+      userLocation: null,           // { lat, lng }
+      destination: null,            // { lat, lon, address }
+      enabledModes: ['car', 'walk', 'train', 'tram', 'bus'], // Selected transport modes
+      calculatedRoutes: null,       // PlannedRoute instance
+      selectedRouteType: 'fastest', // 'fastest' or 'greenest'
+      calculating: false,           // Loading state for route calculation
+      recalcTimer: null            // Debounce timer
     };
   },
 
@@ -146,15 +206,24 @@ export default {
         error: 'GPS Error'
       };
       return texts[this.gpsStatus] || 'Unknown';
+    },
+
+    showRouteSelection(){
+      return this.destination && this.calculatedRoutes && !this.isActive;
+    },
+
+    startButtonTest(){
+      if (this.isActive) return 'Trip Active';
+      if (!this.selectedRouteType) return '🚀 Start Trip';
+      const routeName = this.selectedRouteType === 'greenest' ? 'Greenest' : 'Fastest';
+      return `🚀 Start with ${routeName} Route`;
     }
+
   },
 
   mounted() {
-    if (this.trip && this.$refs.mapContainer) {
-      this.initializeMap();
-    }
-    this.checkGPSAvailability();
     this.loadUserCar();
+    this.initLiveTracking();
   },
 
   beforeUnmount() {
@@ -168,51 +237,60 @@ export default {
       } else {
         this.stopDurationTimer();
       }
+    },
+
+    //Watch enabled modes for recalculation of routes
+    enabledModes: {
+      handler() {
+        if (this.destination) {
+          clearTimeout(this.recalcTimer);
+          this.recalcTimer = setTimeout(() => {
+            this.calculateRoutes();
+          }, 500);
+        }
+      },
+      deep: true
     }
   },
 
   methods: {
-    async initializeMap() {
-      try {
-        const oldMapEl = this.$refs.mapContainer;
-        if (oldMapEl && oldMapEl._leaflet_id) {
-          // Leaflet caches the element by ID internally
-          console.warn("Old Leaflet map detected — cleaning up before init...");
-          oldMapEl._leaflet_id = null;
-        }
-        this.map = await this.trip.initializeMap(this.$refs.mapContainer, {
-          zoom: 16
-        });
-      } catch (error) {
-        console.error('Failed to initialize map:', error);
-        this.gpsStatus = 'error';
-      }
-    },
-
-    async checkGPSAvailability() {
+    async initLiveTracking() {
       if (!navigator.geolocation) {
-        this.gpsStatus = 'unavailable';
+        console.warn("❌ Geolocation not supported, loading fallback map...");
+        this.gpsStatus = "unavailable";
+        await this.trip.initializeMap(this.$refs.mapContainer, { zoom: 16 }, { lat: -37.8136, lng: 144.9631 });
         return;
       }
 
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          console.log("✅ GPS available, initializing map...");
+          this.gpsStatus = "available";
+          await this.trip.initializeMap(this.$refs.mapContainer, { zoom: 16 }, { lat: pos.coords.latitude, lng: pos.coords.longitude });
+          this.userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        },
+        async (err) => {
+          console.warn("⚠️ GPS access denied or unavailable:", err);
+          this.gpsStatus = "unavailable";
+          await this.trip.initializeMap(this.$refs.mapContainer, { zoom: 16 }, { lat: -37.8136, lng: 144.9631 });
+          this.userLocation = { lat: -37.8136, lng: 144.9631 };
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    },
+
+    async initializeMap(lat, lng) {
       try {
-        await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            () => {
-              this.gpsStatus = 'available';
-              resolve();
-            },
-            (error) => {
-              this.gpsStatus = 'error';
-              reject(error);
-            },
-            { timeout: 5000 }
-          );
-        });
+        this.map = await this.trip.initializeMap(this.$refs.mapContainer, { zoom: 16 });
+        this.map.setView([lat, lng], 14);
+        this.userLocation = { lat, lng };
+        console.log("🗺️ Map initialized successfully");
       } catch (error) {
-        this.gpsStatus = error;
+        console.error("Failed to initialize map:", error);
+        this.gpsStatus = "error";
       }
     },
+
 
     async loadUserCar() {
       try {
@@ -254,6 +332,12 @@ export default {
         return;
       }
 
+      //Set route if planned
+      if (this.destination && this.calculatedRoutes) {
+        this.trip.setDestination(this.destination);
+        this.trip.setPlannedRoute(this.calculatedRoutes, this.selectedRouteType);
+      }
+
       this.tripStartTime = Date.now();
       this.$emit('start-trip');
     },
@@ -278,7 +362,7 @@ export default {
     },
 
     // Car-specific methods
-    
+
 
     getModelPlaceholder() {
       if (!this.trip.data.vehicleMake) {
@@ -324,6 +408,66 @@ export default {
       if (mapEl && mapEl._leaflet_id) {
         mapEl._leaflet_id = null;
       }
+    },
+
+    handleDestinationSelected(dest){
+      this.destination = dest;
+      this.calculateRoutes();
+    },
+
+    handleDestinationCleared(){
+      this.destination = null;
+      this.calculatedRoutes = null;
+      this.selectedRouteType = 'fastest';
+    },
+
+    // Route Calculation
+    async calculateRoutes(){
+      if (!this.destination || !this.userLocation) return;
+
+      this.calculating = true;
+
+      try {
+        const response = await fetch(`${API_BASE}/routes/calculate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            start: {
+              lat: this.userLocation.lat,
+              lon: this.userLocation.lng
+            },
+            destination: this.destination,
+            enabled_modes: this.enabledModes
+          })
+        });
+
+        if (!response.ok) throw new Error('Route calculation failed');
+
+        const data = await response.json();
+
+        if (data.status === 'error') {
+          alert(data.message);
+          return;
+        }
+
+        // Import PlannedRoute at top: import PlannedRoute from '@/classes/PlannedRoute';
+        this.calculatedRoutes = new PlannedRoute(data);
+        this.selectedRouteType = 'fastest'; // Default selection
+
+      } catch (error) {
+        console.error('Route calculation error:', error);
+        alert('Failed to calculate routes. Please try again.');
+      } finally {
+        this.calculating = false;
+      }
+    },
+    // ROUTE SELECTION
+    handleRouteSelected(routeType) {
+      this.selectedRouteType = routeType;
+    },
+
+    handleRouteClicked(routeType) {
+      this.selectedRouteType = routeType;
     }
   }
 };
@@ -530,5 +674,43 @@ export default {
   background: #f8d7da;
   color: #721c24;
   border: 1px solid #f5c6cb;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  color: white;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+  margin-top: 20px;
+  font-size: 18px;
+}
+
+/* Adjust map height when routes are shown */
+.map-section.with-routes .tracking-map {
+  height: 250px; /* Reduced height when showing route cards */
 }
 </style>

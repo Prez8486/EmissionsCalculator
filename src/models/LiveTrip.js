@@ -28,6 +28,12 @@ export class LiveTrip extends BaseTrip {
     //Callbacks for GPS updates
     this.onLocationUpdate = options.onLocationUpdate || (() => {});
     this.onDistanceUpdate = options.onDistanceUpdate || (() => {});
+
+    //Route Planning Properties
+    this.destination = null // { lat, lon, address }
+    this.plannedRoute = null // PlannedRoute instance
+    this.selectedRouteType = null;    // 'fastest' or 'greenest'
+    this.isFollowingRoute = false;    // Track if user is following planned route
   }
 
   //Start GPS Tracking and Trip
@@ -40,6 +46,17 @@ export class LiveTrip extends BaseTrip {
       if (!this.config.gps.enabled) {
         this.onError('GPS not supported', `${this.transportMode} does not support GPS tracking`);
         return false;
+      }
+
+      try {
+        //Check if following planned route
+        if (this.destination && this.plannedRoute) {
+          this.isFollowingRoute = true;
+          console.log(`🗺️ Starting trip following ${this.selectedRouteType} route`);
+          console.log('Planned route data:', this.getPlannedRouteData());
+        }
+      } catch (err) {
+        console.error('Error preparing planned route:', err);
       }
 
       try {
@@ -297,45 +314,51 @@ export class LiveTrip extends BaseTrip {
   }
 
   // Initialize map (called by UI component)
-  initializeMap(mapContainer, options = {}) {
-    if (!navigator.geolocation) {
-      this.onError('GPS Not Available', 'Geolocation is not supported');
-      return null;
-    }
-
+  initializeMap(mapContainer, options = {}, coords = null) {
     return new Promise((resolve, reject) => {
+      // Prevent double initialization
+      if (this.map) {
+        console.log("ℹ️ Map already initialized");
+        if (coords) this.map.setView([coords.lat, coords.lng], options.zoom || 15);
+        return resolve(this.map);
+      }
+
+      // Function to actually create map
+      const createMap = (center) => {
+        this.map = L.map(mapContainer, {
+          center,
+          zoom: options.zoom || 15,
+          ...options
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+        }).addTo(this.map);
+
+        this.polyline = L.polyline([], {
+          color: this.getPathColor(),
+          weight: 4,
+          opacity: 0.8
+        }).addTo(this.map);
+
+        resolve(this.map);
+      };
+
+      // If coords passed directly, use them
+      if (coords) {
+        return createMap([coords.lat, coords.lng]);
+      }
+
+      // Otherwise, fetch geolocation
+      if (!navigator.geolocation) {
+        this.onError('GPS Not Available', 'Geolocation is not supported');
+        return reject(new Error('Geolocation not supported'));
+      }
+
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const center = [position.coords.latitude, position.coords.longitude];
-
-          this.map = L.map(mapContainer, {
-            center: center,
-            zoom: options.zoom || 15,
-            ...options
-          });
-
-          // Add tile layer
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-          }).addTo(this.map);
-
-          // Initialize polyline
-          this.polyline = L.polyline([], {
-            color: this.getPathColor(),
-            weight: 4,
-            opacity: 0.8
-          }).addTo(this.map);
-
-          resolve(this.map);
-        },
-        (error) => {
-          console.error('Failed to get initial position:', error);
-          reject(error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000
-        }
+        (position) => createMap([position.coords.latitude, position.coords.longitude]),
+        (error) => reject(error),
+        { enableHighAccuracy: true, timeout: 10000 }
       );
     });
   }
@@ -608,4 +631,20 @@ export class LiveTrip extends BaseTrip {
     this.sensorBuffer = [];
     console.log(`🗑️ Cleared ${clearedSamples} samples from buffer`);
   }*/
+
+  //Methods for Route Planning
+  setDestination(destination) {
+    this.destination = destination; // { lat, lon, address }
+    console.log('Destination set to:', this.destination);
+  }
+
+  setPlannedRoute(plannedRoute, routeType) {
+    this.plannedRoute = plannedRoute;
+    this.selectedRouteType = routeType;
+    console.log(`Planned route set: ${routeType}`, plannedRoute);
+  }
+  getPlannedRouteData() {
+    if (!this.plannedRoute) return null;
+    return this.plannedRoute.getRoute(this.selectedRouteType);
+  }
 }

@@ -10,7 +10,10 @@
         <router-link to="/leaderboard">Leaderboard</router-link>
         <router-link to="/Comparison">Comparison</router-link>
         <button @click="showSettings = true" class="settings-btn">Settings</button>
-        <router-link to="/select-mode" class="website-addtrip">+</router-link>
+        <router-link
+          :to="isAndroid ? '/livetracking' : '/select-mode'"
+          class="website-addtrip"
+        > + </router-link>
         <!-- <router-link to="/base-form" class="website-plus-button">-</router-link> -->
       </nav>
     </header>
@@ -50,7 +53,7 @@
       </router-link>
 
       <!-- Center Add Trip Button -->
-      <router-link to="/trip-mode-selection" class="nav-item center-button" active-class="active">
+      <router-link to="/base-form" class="nav-item center-button" active-class="active">
         <div class="center-icon">+</div>
       </router-link>
 
