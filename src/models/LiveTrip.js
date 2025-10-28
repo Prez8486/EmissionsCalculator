@@ -201,7 +201,7 @@ export class LiveTrip extends BaseTrip {
     };
 
     this.currentPosition = newPosition;
-    
+
     this.path.push([newPosition.lat, newPosition.lng]);
     console.log(this.path);
     // Update map if available
@@ -454,40 +454,49 @@ export class LiveTrip extends BaseTrip {
     }
   }
 
-  captureAndBufferSensorData() {
-    const timestamp = new Date().toISOString();
+    captureAndBufferSensorData() {
+      const timestamp = new Date().toISOString();
 
-    const packet = {
-      timestamp,
-      accelerometer: this.lastMotionData?.acceleration || { x: null, y: null, z: null },
-      gyroscope: this.lastOrientationData || { alpha: null, beta: null, gamma: null },
-      gps: this.currentPosition ? {
-        lat: this.currentPosition.lat,
-        lon: this.currentPosition.lng,
-        speed: this.currentPosition.speed || null,
-        accuracy: this.currentPosition.accuracy || null,
-        altitude: this.currentPosition.altitude || null
-      } : {}
-    };
+      const packet = {
+        timestamp,
 
-    this.sensorBuffer.push(packet);
+        accelerometer: {
+          x: Number(this.lastMotionData?.acceleration?.x ?? 0),
+          y: Number(this.lastMotionData?.acceleration?.y ?? 0),
+          z: Number(this.lastMotionData?.acceleration?.z ?? 0),
+        },
 
-    // Log every 50 samples (5 seconds) to avoid spam
-    if (this.sensorBuffer.length % 50 === 0) {
-      console.log(`📊 Sensor buffer: ${this.sensorBuffer.length}/${this.batchSize} samples collected`);
-      console.log('📱 Latest sensor reading:', {
-        hasAccel: !!this.lastMotionData,
-        hasGyro: !!this.lastOrientationData,
-        hasGPS: !!this.currentPosition,
-        timestamp: timestamp
-      });
-    }
+        gyroscope: {
+          x: Number(this.lastOrientationData?.alpha ?? 0),
+          y: Number(this.lastOrientationData?.beta ?? 0),
+          z: Number(this.lastOrientationData?.gamma ?? 0),
+        },
 
-    // Send batch when buffer is full
-    if (this.sensorBuffer.length >= this.batchSize) {
-      console.log(`🚀 Buffer full! Sending batch of ${this.sensorBuffer.length} samples to AI service...`);
-      /*this.sendSensorBatch(false);*/
-    }
+        gps: {
+          lat: Number(this.currentPosition?.lat ?? 0),
+          lon: Number(this.currentPosition?.lng ?? 0),
+          speed: Number(this.currentPosition?.speed ?? 0),
+          accuracy: Number(this.currentPosition?.accuracy ?? 0),
+          altitude: Number(this.currentPosition?.altitude ?? 0),
+        }
+      };
+
+      // Push packet to buffer
+      this.sensorBuffer.push(packet);
+
+      // Log every 50 samples to monitor progress
+      if (this.sensorBuffer.length % 50 === 0) {
+        console.log(`📊 Sensor buffer: ${this.sensorBuffer.length}/${this.batchSize} samples collected`);
+      }
+
+      // Only send exactly batchSize samples
+      while (this.sensorBuffer.length >= this.batchSize) {
+        const batchToSend = this.sensorBuffer.slice(0, this.batchSize);
+        console.log(`🚀 Sending batch of ${batchToSend.length} samples to AI service...`);
+
+        this.sendSensorBatch(batchToSend); // pass exact batch
+        this.sensorBuffer = this.sensorBuffer.slice(this.batchSize); // remove sent samples
+      }
   }
 
  /* async sendSensorBatch(forceSend = false) {
@@ -521,6 +530,12 @@ export class LiveTrip extends BaseTrip {
         userId: this.userId
       };
 
+      //Size in Payload
+      const sizeInKB = new Blob([JSON.stringify(payload)]).size / 1024;
+      console.log(`📦 Payload size: ${sizeInKB} KB`);
+      //Preview first sample
+      console.log("Sending batch sample[0]:", this.sensorBuffer[0]);
+
       console.log('📦 Request payload:', {
         sensorDataCount: payload.sensorDataArray.length,
         tripId: payload.tripId,
@@ -528,6 +543,12 @@ export class LiveTrip extends BaseTrip {
         firstSample: payload.sensorDataArray[0],
         lastSample: payload.sensorDataArray[payload.sensorDataArray.length - 1]
       });
+
+      console.log("🚚 Final payload to API:", JSON.stringify({
+        tripId: this.tripId,
+        expectedMode: this.expectedMode,
+        sensorData: this.sensorBuffer
+      }, null, 2).slice(0, 500) + " ...");
 
       const response = await fetch(url, {
         method: 'POST',
