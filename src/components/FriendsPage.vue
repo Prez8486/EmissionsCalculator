@@ -19,11 +19,10 @@
 
         <div class="user-actions">
           <span v-if="isFriend(user)" class="badge friend">✅ Friends</span>
-          <button v-else-if="pendingRequests.some((r) => r._id === user._id)"
-                  @click="acceptRequest(user._id)"
-                  class="accept-btn">
-            ✅ Accept
-          </button>
+          <div v-else-if="pendingRequests.some((r) => r._id === user._id)">
+            <button @click="acceptRequest(user._id)" class="accept-btn">✅ Accept</button>
+            <button @click="cancelRequest(user._id)" class="cancel-btn">❌ Cancel</button>
+          </div>
 
           <span v-else-if="user.friendRequests?.includes(currentUserId)" class="badge pending">
             ⏳ Request Sent
@@ -94,6 +93,72 @@
           console.error("Failed to load all users:", err);
         }
       },
+      async acceptRequest(friendId) {
+        try {
+          const token = localStorage.getItem("token");
+          const res = await fetch(`${ API_BASE }/friends/accept/${ friendId }`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${ token }`,
+            "Content-Type": "application/json",
+        },
+      });
+
+      const data = await res.json();
+      if(res.ok) {
+    this.showMessage("✅ Friend request accepted!");
+    await this.loadFriends();
+    await this.loadRequests();
+  } else {
+    this.showMessage(  data.error || data.message );
+  }
+    } catch (err) {
+    console.error("Error accepting request:", err);
+    this.showMessage("❌ Failed to accept friend request.");
+  }
+      },
+      showMessage(message) {
+        this.statusMessage = message;
+        setTimeout(() => (this.statusMessage = ""), 3000);
+      },
+      async cancelRequest(friendId) {
+        try {
+          const token = localStorage.getItem("token");
+          const res = await fetch(`${ API_BASE }/friends/cancel/${ friendId }`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${ token }`,
+            "Content-Type": "application/json",
+        },
+      });
+
+      const data = await res.json();
+      if(res.ok) {
+    this.showMessage("❌ Friend request cancelled!");
+        this.pendingRequests = this.pendingRequests.filter(
+          (r) => r._id !== friendId
+        );
+        this.users = this.users.map((user) => {
+          if (user._id === friendId) {
+            // Reset their request indicators
+            return { ...user, friendRequests: [], sentRequests: [] };
+          }
+          return user;
+        });
+
+        // Optionally reload lists from backend to ensure sync
+        await new Promise(r => setTimeout(r, 700));
+        await this.loadRequests();
+        await this.loadAllUsers();
+  } else {
+    this.showMessage(data.error || data.message);
+  }
+    } catch (err) {
+    console.error("Error cancelling request:", err);
+    this.showMessage("❌ Failed to cancel friend request.");
+  }
+  },
+
 
       async loadFriends() {
         const token = localStorage.getItem("token");
@@ -222,6 +287,31 @@
     .add-btn:hover {
       background: #1b5e20;
     }
+  .cancel-btn {
+    background: #2e7d32;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+    .cancel-btn:hover {
+      background: #1b5e20;
+    }
+  .accept-btn {
+    background: #2e7d32;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+    .accept-btn:hover {
+      background: #1b5e20;
+    }
+
 
   .badge {
     padding: 6px 10px;
