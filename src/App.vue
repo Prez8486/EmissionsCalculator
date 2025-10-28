@@ -10,6 +10,7 @@
         <router-link to="/leaderboard">Leaderboard</router-link>
         <router-link to="/Comparison">Comparison</router-link>
         <router-link to="/info">Information Page</router-link>
+        <router-link to="/timetable">Timetable</router-link>
         <router-link to="/friendspage">Friends Page</router-link>
         <button @click="showSettings = true" class="settings-btn">Settings</button>
         <router-link to="/select-mode" class="website-addtrip">+</router-link>

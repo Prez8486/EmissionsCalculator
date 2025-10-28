@@ -16,6 +16,7 @@ import Comparison from '../components/Comparison.vue';
 import CarDetails from '../components/CarDetails.vue';
 import InformationPage from '../components/InformationPage.vue';
 import FriendsPage from '../components/FriendsPage.vue';
+import PtvTimetable from '../components/PtvTimetable.vue';
 
 
 const routes = [
@@ -36,6 +37,7 @@ const routes = [
   { path: '/mycar', component: CarDetails },
   { path: '/info', component: InformationPage },
   { path: '/friendspage', component: FriendsPage },
+  { path: '/timetable', component: PtvTimetable },
   
   {
     path: '/base-form',
