@@ -120,23 +120,24 @@
             `${API_BASE}/ptv/stops/search/${encodeURIComponent(this.searchQuery)}`
           );
           const data = await res.json();
-          this.suggestions = data.slice(0, 8);
+          this.suggestions = data.slice(0,8);
         } catch (err) {
           this.error = "Error fetching stops: " + err.message;
         }
       },
 
       async selectStop(stop) {
+        this.mapVisible = true;
+        await this.$nextTick(); // Wait for DOM to update
+
+        // Initialize the map if not already ready
         await this.initializeMap();
         this.showUserLocation();
-        this.mapVisble = true;
         this.selectedStop = stop;
         this.suggestions = [];
         this.searchQuery = stop.stop_name;
 
-        const res = await fetch(
-          `https://timetableapi.ptv.vic.gov.au/v3/stops/${stop.stop_id}/route_type/${stop.route_type}?devid=3003702&signature=DE108E4BA491E9E4438132DCCBBEDECFE23BDA67`
-        );
+        const res = await fetch(`${ API_BASE }/ptv/stops/${ stop.stop_id }/${ stop.route_type }`);
         const data = await res.json();
         const { stop_latitude, stop_longitude } = data;
         
