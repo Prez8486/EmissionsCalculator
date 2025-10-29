@@ -28,6 +28,12 @@ export class LiveTrip extends BaseTrip {
     //Callbacks for GPS updates
     this.onLocationUpdate = options.onLocationUpdate || (() => {});
     this.onDistanceUpdate = options.onDistanceUpdate || (() => {});
+
+    //Route Planning Properties
+    this.destination = null // { lat, lon, address }
+    this.plannedRoute = null // PlannedRoute instance
+    this.selectedRouteType = null;    // 'fastest' or 'greenest'
+    this.isFollowingRoute = false;    // Track if user is following planned route
   }
 
   //Start GPS Tracking and Trip
@@ -40,6 +46,17 @@ export class LiveTrip extends BaseTrip {
       if (!this.config.gps.enabled) {
         this.onError('GPS not supported', `${this.transportMode} does not support GPS tracking`);
         return false;
+      }
+
+      try {
+        //Check if following planned route
+        if (this.destination && this.plannedRoute) {
+          this.isFollowingRoute = true;
+          console.log(`🗺️ Starting trip following ${this.selectedRouteType} route`);
+          console.log('Planned route data:', this.getPlannedRouteData());
+        }
+      } catch (err) {
+        console.error('Error preparing planned route:', err);
       }
 
       try {
@@ -201,7 +218,7 @@ export class LiveTrip extends BaseTrip {
     };
 
     this.currentPosition = newPosition;
-    
+
     this.path.push([newPosition.lat, newPosition.lng]);
     console.log(this.path);
     // Update map if available
@@ -297,45 +314,51 @@ export class LiveTrip extends BaseTrip {
   }
 
   // Initialize map (called by UI component)
-  initializeMap(mapContainer, options = {}) {
-    if (!navigator.geolocation) {
-      this.onError('GPS Not Available', 'Geolocation is not supported');
-      return null;
-    }
-
+  initializeMap(mapContainer, options = {}, coords = null) {
     return new Promise((resolve, reject) => {
+      // Prevent double initialization
+      if (this.map) {
+        console.log("ℹ️ Map already initialized");
+        if (coords) this.map.setView([coords.lat, coords.lng], options.zoom || 15);
+        return resolve(this.map);
+      }
+
+      // Function to actually create map
+      const createMap = (center) => {
+        this.map = L.map(mapContainer, {
+          center,
+          zoom: options.zoom || 15,
+          ...options
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+        }).addTo(this.map);
+
+        this.polyline = L.polyline([], {
+          color: this.getPathColor(),
+          weight: 4,
+          opacity: 0.8
+        }).addTo(this.map);
+
+        resolve(this.map);
+      };
+
+      // If coords passed directly, use them
+      if (coords) {
+        return createMap([coords.lat, coords.lng]);
+      }
+
+      // Otherwise, fetch geolocation
+      if (!navigator.geolocation) {
+        this.onError('GPS Not Available', 'Geolocation is not supported');
+        return reject(new Error('Geolocation not supported'));
+      }
+
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const center = [position.coords.latitude, position.coords.longitude];
-
-          this.map = L.map(mapContainer, {
-            center: center,
-            zoom: options.zoom || 15,
-            ...options
-          });
-
-          // Add tile layer
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-          }).addTo(this.map);
-
-          // Initialize polyline
-          this.polyline = L.polyline([], {
-            color: this.getPathColor(),
-            weight: 4,
-            opacity: 0.8
-          }).addTo(this.map);
-
-          resolve(this.map);
-        },
-        (error) => {
-          console.error('Failed to get initial position:', error);
-          reject(error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000
-        }
+        (position) => createMap([position.coords.latitude, position.coords.longitude]),
+        (error) => reject(error),
+        { enableHighAccuracy: true, timeout: 10000 }
       );
     });
   }
@@ -454,40 +477,49 @@ export class LiveTrip extends BaseTrip {
     }
   }
 
-  captureAndBufferSensorData() {
-    const timestamp = new Date().toISOString();
+    captureAndBufferSensorData() {
+      const timestamp = new Date().toISOString();
 
-    const packet = {
-      timestamp,
-      accelerometer: this.lastMotionData?.acceleration || { x: null, y: null, z: null },
-      gyroscope: this.lastOrientationData || { alpha: null, beta: null, gamma: null },
-      gps: this.currentPosition ? {
-        lat: this.currentPosition.lat,
-        lon: this.currentPosition.lng,
-        speed: this.currentPosition.speed || null,
-        accuracy: this.currentPosition.accuracy || null,
-        altitude: this.currentPosition.altitude || null
-      } : {}
-    };
+      const packet = {
+        timestamp,
 
-    this.sensorBuffer.push(packet);
+        accelerometer: {
+          x: Number(this.lastMotionData?.acceleration?.x ?? 0),
+          y: Number(this.lastMotionData?.acceleration?.y ?? 0),
+          z: Number(this.lastMotionData?.acceleration?.z ?? 0),
+        },
 
-    // Log every 50 samples (5 seconds) to avoid spam
-    if (this.sensorBuffer.length % 50 === 0) {
-      console.log(`📊 Sensor buffer: ${this.sensorBuffer.length}/${this.batchSize} samples collected`);
-      console.log('📱 Latest sensor reading:', {
-        hasAccel: !!this.lastMotionData,
-        hasGyro: !!this.lastOrientationData,
-        hasGPS: !!this.currentPosition,
-        timestamp: timestamp
-      });
-    }
+        gyroscope: {
+          x: Number(this.lastOrientationData?.alpha ?? 0),
+          y: Number(this.lastOrientationData?.beta ?? 0),
+          z: Number(this.lastOrientationData?.gamma ?? 0),
+        },
 
-    // Send batch when buffer is full
-    if (this.sensorBuffer.length >= this.batchSize) {
-      console.log(`🚀 Buffer full! Sending batch of ${this.sensorBuffer.length} samples to AI service...`);
-      /*this.sendSensorBatch(false);*/
-    }
+        gps: {
+          lat: Number(this.currentPosition?.lat ?? 0),
+          lon: Number(this.currentPosition?.lng ?? 0),
+          speed: Number(this.currentPosition?.speed ?? 0),
+          accuracy: Number(this.currentPosition?.accuracy ?? 0),
+          altitude: Number(this.currentPosition?.altitude ?? 0),
+        }
+      };
+
+      // Push packet to buffer
+      this.sensorBuffer.push(packet);
+
+      // Log every 50 samples to monitor progress
+      if (this.sensorBuffer.length % 50 === 0) {
+        console.log(`📊 Sensor buffer: ${this.sensorBuffer.length}/${this.batchSize} samples collected`);
+      }
+
+      // Only send exactly batchSize samples
+      while (this.sensorBuffer.length >= this.batchSize) {
+        const batchToSend = this.sensorBuffer.slice(0, this.batchSize);
+        console.log(`🚀 Sending batch of ${batchToSend.length} samples to AI service...`);
+
+        this.sendSensorBatch(batchToSend); // pass exact batch
+        this.sensorBuffer = this.sensorBuffer.slice(this.batchSize); // remove sent samples
+      }
   }
 
  /* async sendSensorBatch(forceSend = false) {
@@ -521,6 +553,12 @@ export class LiveTrip extends BaseTrip {
         userId: this.userId
       };
 
+      //Size in Payload
+      const sizeInKB = new Blob([JSON.stringify(payload)]).size / 1024;
+      console.log(`📦 Payload size: ${sizeInKB} KB`);
+      //Preview first sample
+      console.log("Sending batch sample[0]:", this.sensorBuffer[0]);
+
       console.log('📦 Request payload:', {
         sensorDataCount: payload.sensorDataArray.length,
         tripId: payload.tripId,
@@ -528,6 +566,12 @@ export class LiveTrip extends BaseTrip {
         firstSample: payload.sensorDataArray[0],
         lastSample: payload.sensorDataArray[payload.sensorDataArray.length - 1]
       });
+
+      console.log("🚚 Final payload to API:", JSON.stringify({
+        tripId: this.tripId,
+        expectedMode: this.expectedMode,
+        sensorData: this.sensorBuffer
+      }, null, 2).slice(0, 500) + " ...");
 
       const response = await fetch(url, {
         method: 'POST',
@@ -587,4 +631,20 @@ export class LiveTrip extends BaseTrip {
     this.sensorBuffer = [];
     console.log(`🗑️ Cleared ${clearedSamples} samples from buffer`);
   }*/
+
+  //Methods for Route Planning
+  setDestination(destination) {
+    this.destination = destination; // { lat, lon, address }
+    console.log('Destination set to:', this.destination);
+  }
+
+  setPlannedRoute(plannedRoute, routeType) {
+    this.plannedRoute = plannedRoute;
+    this.selectedRouteType = routeType;
+    console.log(`Planned route set: ${routeType}`, plannedRoute);
+  }
+  getPlannedRouteData() {
+    if (!this.plannedRoute) return null;
+    return this.plannedRoute.getRoute(this.selectedRouteType);
+  }
 }
