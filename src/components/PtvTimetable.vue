@@ -2,7 +2,7 @@
   <div class="ptv-timetable-container">
     <h2>🚉 PTV Timetable & Stop Map</h2>
 
-    <!-- Stop Search -->
+    <!-- ✅ Search Section (always stays at top) -->
     <div class="search-section">
       <input v-model="searchQuery"
              @input="searchStops"
@@ -16,10 +16,9 @@
       </ul>
     </div>
 
-    <!-- Map Section -->
-    <div class="map-section" v-if="mapVisible">
-
-      <div id="ptv-map" class="tracking-map" ref="mapContainer"></div>
+    <!-- ✅ Map Section below (renders but doesn’t affect search bar) -->
+    <div class="map-wrapper">
+      <div v-show="mapVisible" id="ptv-map" class="tracking-map" ref="mapContainer"></div>
     </div>
 
     <!-- Stop Details -->
@@ -45,7 +44,7 @@
             <td>{{ routeNames[d.route_id] || `Route ${d.route_id}` }}</td>
             <td>{{ formatTime(d.scheduled_departure_utc) }}</td>
             <td><span :class="statusClass(d)">{{ getStatus(d) }}</span></td>
-            <td>{{ d.platform_number || '-' }}</td>
+            <td>{{ d.platform_number || "-" }}</td>
           </tr>
         </tbody>
       </table>
@@ -68,46 +67,21 @@
         searchQuery: "",
         suggestions: [],
         selectedStop: null,
-        mapVisible: false,
         departures: [],
         routeNames: {},
+        mapVisible: false,
         error: null,
       };
-    },
-    async mounted() {
-     
     },
     methods: {
       async initializeMap() {
         if (this.map) return;
         const mapEl = this.$refs.mapContainer;
         if (mapEl._leaflet_id) mapEl._leaflet_id = null;
-
         this.map = L.map(mapEl).setView([-37.8136, 144.9631], 13);
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: '© OpenStreetMap contributors',
+          attribution: "© OpenStreetMap contributors",
         }).addTo(this.map);
-      },
-
-      async showUserLocation() {
-        if (!navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            const { latitude, longitude } = pos.coords;
-            const coords = [latitude, longitude];
-            if (this.userMarker) this.userMarker.remove();
-            this.userMarker = L.marker(coords, {
-              icon: L.divIcon({
-                className: "user-location-icon",
-                html: "📍",
-                iconSize: [20, 20],
-              }),
-            }).addTo(this.map);
-            this.map.setView(coords, 13);
-          },
-          err => console.warn("GPS error:", err),
-          { enableHighAccuracy: true, timeout: 5000 }
-        );
       },
 
       async searchStops() {
@@ -116,11 +90,9 @@
           return;
         }
         try {
-          const res = await fetch(
-            `${API_BASE}/ptv/stops/search/${encodeURIComponent(this.searchQuery)}`
-          );
+          const res = await fetch(`${API_BASE}/ptv/stops/search/${encodeURIComponent(this.searchQuery)}`);
           const data = await res.json();
-          this.suggestions = data.slice(0,8);
+          this.suggestions = data.slice(0, 8);
         } catch (err) {
           this.error = "Error fetching stops: " + err.message;
         }
@@ -128,29 +100,22 @@
 
       async selectStop(stop) {
         this.mapVisible = true;
-        await this.$nextTick(); // Wait for DOM to update
-
-        // Initialize the map if not already ready
+        await this.$nextTick();
         await this.initializeMap();
-        this.showUserLocation();
         this.selectedStop = stop;
         this.suggestions = [];
         this.searchQuery = stop.stop_name;
 
-        const res = await fetch(`${ API_BASE }/ptv/stops/${ stop.stop_id }/${ stop.route_type }`);
+        const res = await fetch(`${API_BASE}/ptv/stops/${stop.stop_id}/${stop.route_type}`);
         const data = await res.json();
         const { stop_latitude, stop_longitude } = data;
-        
-       
+
         if (stop_latitude && stop_longitude) {
           this.addMarker([stop_latitude, stop_longitude], stop.stop_name);
           this.map.setView([stop_latitude, stop_longitude], 15);
         }
 
         this.fetchDepartures();
-        
-
-
       },
 
       addMarker(coords, name) {
@@ -162,9 +127,7 @@
       async fetchDepartures() {
         if (!this.selectedStop) return;
         try {
-          const res = await fetch(
-            `${API_BASE}/ptv/departures/${this.selectedStop.route_type}/${this.selectedStop.stop_id}`
-          );
+          const res = await fetch(`${API_BASE}/ptv/departures/${this.selectedStop.route_type}/${this.selectedStop.stop_id}`);
           const data = await res.json();
           this.departures = data.departures?.slice(0, 8) || [];
           this.fetchRouteNames();
@@ -193,10 +156,7 @@
 
       getStatus(d) {
         if (d.estimated_departure_utc) {
-          const diff =
-            (new Date(d.estimated_departure_utc) -
-              new Date(d.scheduled_departure_utc)) /
-            60000;
+          const diff = (new Date(d.estimated_departure_utc) - new Date(d.scheduled_departure_utc)) / 60000;
           if (diff > 2) return `Delayed ${Math.round(diff)} min`;
           if (diff < -1) return "Early";
           return "On Time";
@@ -227,19 +187,28 @@
     padding: 1rem;
     background: #fff;
     border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   }
 
-  .tracking-map {
-    width: 100%;
-    height: 400px;
-    border-radius: 8px;
-    border: 2px solid #ddd;
+  /* --- SEARCH SECTION --- */
+  .search-section {
+    position: relative;
+    margin-bottom: 1.5rem;
+    z-index: 5000;
   }
+
+    .search-section input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
 
   .suggestions {
     list-style: none;
-    margin: 0;
+    margin: 4px 0 0;
     padding: 0;
     background: white;
     border: 1px solid #ccc;
@@ -247,6 +216,8 @@
     z-index: 10;
     width: 100%;
     border-radius: 6px;
+    max-height: 220px;
+    overflow-y: auto;
   }
 
     .suggestions li {
@@ -258,15 +229,76 @@
         background: #f5f5f5;
       }
 
+  /* --- MAP --- */
+  .map-wrapper {
+    position: relative;
+  }
+
+  .tracking-map {
+    width: 100%;
+    height: 420px;
+    border-radius: 8px;
+    border: 2px solid #ddd;
+  }
+
+  /* --- TABLE --- */
+  .departures table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
+    font-size: 0.95rem;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .departures th {
+    background: #007bff;
+    color: #fff;
+    padding: 10px;
+    text-align: left;
+  }
+
+  .departures td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+  }
+
+  .departures tr:nth-child(even) {
+    background: #f8f9fa;
+  }
+
+  .departures tr:hover {
+    background: #e9f3ff;
+  }
+
+  /* --- STATUS COLORS --- */
   .status.ontime {
     color: #28a745;
+    font-weight: 600;
   }
 
   .status.delayed {
     color: #dc3545;
+    font-weight: 600;
   }
 
   .status.early {
     color: #007bff;
+    font-weight: 600;
+  }
+
+  .status.scheduled {
+    color: #6c757d;
+  }
+
+  .stop-info {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f7f9fc;
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
   }
 </style>

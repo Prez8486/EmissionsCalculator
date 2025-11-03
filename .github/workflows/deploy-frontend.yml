@@ -1,0 +1,43 @@
+name: Deploy Frontend to Nectar Cloud
+
+on:
+  push:
+    branches:
+      - Main   # or replace with 'frontend' if separate branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies and build Vue app
+        run: |
+          cd frontend   # ⬅ change if your folder name differs
+          npm install
+          npm run build
+
+      - name: Deploy build to Nectar frontend server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.FRONT_HOST }}
+          username: ${{ secrets.FRONT_USER }}
+          key: ${{ secrets.FRONT_SSH_KEY }}
+          source: "frontend/dist/*"
+          target: "${{ secrets.FRONT_PATH }}/dist"
+
+      - name: Restart Nginx
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.FRONT_HOST }}
+          username: ${{ secrets.FRONT_USER }}
+          key: ${{ secrets.FRONT_SSH_KEY }}
+          script: |
+            sudo systemctl restart nginx
