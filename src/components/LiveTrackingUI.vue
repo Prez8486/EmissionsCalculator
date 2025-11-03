@@ -4,6 +4,25 @@
     <div class="map-section">
       <div id="tracking-map" class="tracking-map" ref="mapContainer"></div>
 
+      <!-- Destination Search Bar -->
+      <DestinationSearchBar
+        v-if="!isActive"
+        :current-location="userLocation"
+        @destination-selected="handleDestinationSelected"
+        @destination-cleared="handleDestinationCleared"
+      />
+
+      <!-- Route Overlay on Map -->
+      <RouteOverlay
+        v-if="map && calculatedRoutes"
+        :map="map"
+        :fastest-route="calculatedRoutes.fastest"
+        :greenest-route="calculatedRoutes.greenest"
+        :selected-route="selectedRouteType"
+        :show-greenest="calculatedRoutes.show_alternative"
+        @route-clicked="handleRouteClicked"
+      />
+
       <!-- Map Overlay Info -->
       <div class="map-overlay">
         <div class="distance-display">
@@ -17,22 +36,48 @@
       </div>
     </div>
 
+    <!-- Transport Mode Selector -->
+    <TransportModeSelector
+      v-if="showRouteSelection"
+      v-model="enabledModes"
+    />
+
+    <!-- Route Comparison Card -->
+    <RouteComparisonCard
+      v-if="showRouteSelection"
+      :fastest="calculatedRoutes.fastest"
+      :greenest="calculatedRoutes.greenest"
+      :show-greenest="calculatedRoutes.show_alternative"
+      :selected="selectedRouteType"
+      @route-selected="handleRouteSelected"
+    />
+
     <!-- Control Buttons -->
     <div class="controls-section">
-      <button @click="handleStartTrip"
-              :disabled="isActive || loading"
-              class="control-button start-button"
-              :class="{ 'active': isActive }">
+      <button
+        @click="handleStartTrip"
+        :disabled="isActive || loading"
+        class="control-button start-button"
+        :class="{ 'active': isActive }"
+      >
         <span class="button-icon">📍</span>
-        {{ isActive ? 'Trip Active' : 'Start Trip' }}
+        {{ startButtonText }}
       </button>
 
-      <button @click="handleEndTrip"
-              :disabled="!isActive || loading"
-              class="control-button end-button">
+      <button
+        @click="handleEndTrip"
+        :disabled="!isActive || loading"
+        class="control-button end-button"
+      >
         <span class="button-icon">🏁</span>
         {{ loading ? 'Ending...' : 'End Trip' }}
       </button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div v-if="calculating" class="loading-overlay">
+      <div class="spinner"></div>
+      <p>Calculating routes...</p>
     </div>
 
     <!-- Trip Stats (when active) -->
@@ -51,7 +96,6 @@
       </div>
     </div>
 
-    <!-- Additional Form Fields (Car specific) -->
     <!-- Car Info Card (fetched from backend) -->
     <div v-if="trip?.transportMode === 'car' && car && car.make" class="car-info-card">
       <h3>🚗 My Car</h3>
@@ -65,13 +109,36 @@
       <span class="status-icon">{{ gpsStatusIcon }}</span>
       <span class="status-text">{{ gpsStatusText }}</span>
     </div>
+
+    <!-- Debug Button (remove in production) -->
+    <button
+      @click="debugMap"
+      class="debug-button"
+      v-if="!isActive"
+    >
+      🐛 Debug
+    </button>
   </div>
 </template>
 
 <script>
 import { API_BASE } from '@/config/apiConfig';
+import PlannedRoute from '@/models/PlannedRoute';
+import DestinationSearchBar from '@/components/LiveTracking/DestinationSearchBar.vue';
+import TransportModeSelector from '@/components/LiveTracking/TransportModeSelector.vue';
+import RouteComparisonCard from '@/components/LiveTracking/RouteComparisonCard.vue';
+import RouteOverlay from '@/components/LiveTracking/RouteOverlay.vue';
+import L from 'leaflet';
+
 export default {
   name: 'LiveTrackingUI',
+
+  components: {
+    DestinationSearchBar,
+    TransportModeSelector,
+    RouteComparisonCard,
+    RouteOverlay
+  },
 
   props: {
     trip: {
@@ -98,16 +165,22 @@ export default {
       tripStartTime: null,
       tripDuration: 0,
       intervalId: null,
-      gpsStatus: 'checking', // checking, available, unavailable, error
-      car: {make: '', model: '', extraLoad: ''}
+      gpsStatus: 'checking',
+      car: { make: '', model: '', extraLoad: '' },
+
+      // Route Planning State
+      userLocation: null,
+      destination: null,
+      enabledModes: ['car', 'walk', 'train', 'tram', 'bus'],
+      calculatedRoutes: null,
+      selectedRouteType: 'fastest',
+      calculating: false,
+      recalcTimer: null,
+      currentLocationMarker: null
     };
   },
 
   computed: {
-    hasAdditionalFields() {
-      return this.trip && this.trip.transportMode === 'car';
-    },
-
     averageSpeed() {
       if (!this.isActive || !this.distance || !this.tripDuration) {
         return '0.0';
@@ -146,96 +219,189 @@ export default {
         error: 'GPS Error'
       };
       return texts[this.gpsStatus] || 'Unknown';
-    }
-  },
+    },
 
-  mounted() {
-    if (this.trip && this.$refs.mapContainer) {
-      this.initializeMap();
-    }
-    this.checkGPSAvailability();
-    this.loadUserCar();
-  },
+    showRouteSelection() {
+      return this.destination && this.calculatedRoutes && !this.isActive;
+    },
 
-  beforeUnmount() {
-    this.cleanup();
+    startButtonText() {
+      if (this.isActive) return 'Trip Active';
+      if (!this.selectedRouteType || !this.destination) return '🚀 Start Trip';
+      const routeName = this.selectedRouteType === 'greenest' ? 'Greenest' : 'Fastest';
+      return `🚀 Start with ${routeName} Route`;
+    }
   },
 
   watch: {
+    map: {
+      handler(newMap) {
+        console.log('🗺️ Map instance changed:', !!newMap);
+      },
+      immediate: true
+    },
+
+    calculatedRoutes: {
+      handler(newVal) {
+        console.log('📊 Calculated routes changed:', !!newVal);
+      },
+      immediate: true
+    },
+
     isActive(newVal) {
       if (newVal) {
         this.startDurationTimer();
       } else {
         this.stopDurationTimer();
       }
+    },
+
+    enabledModes: {
+      handler() {
+        if (this.destination) {
+          clearTimeout(this.recalcTimer);
+          this.recalcTimer = setTimeout(() => {
+            this.calculateRoutes();
+          }, 500);
+        }
+      },
+      deep: true
     }
   },
 
-  methods: {
-    async initializeMap() {
-      try {
-        const oldMapEl = this.$refs.mapContainer;
-        if (oldMapEl && oldMapEl._leaflet_id) {
-          // Leaflet caches the element by ID internally
-          console.warn("Old Leaflet map detected — cleaning up before init...");
-          oldMapEl._leaflet_id = null;
-        }
-        this.map = await this.trip.initializeMap(this.$refs.mapContainer, {
-          zoom: 16
-        });
-      } catch (error) {
-        console.error('Failed to initialize map:', error);
-        this.gpsStatus = 'error';
-      }
-    },
+  mounted() {
+    console.log('🎬 LiveTrackingUI mounted');
+    this.loadUserCar();
+    this.initLiveTracking();
+  },
 
-    async checkGPSAvailability() {
+  beforeUnmount() {
+    this.cleanup();
+  },
+
+  methods: {
+    async initLiveTracking() {
       if (!navigator.geolocation) {
-        this.gpsStatus = 'unavailable';
+        console.warn("❌ Geolocation not supported, loading fallback map...");
+        this.gpsStatus = "unavailable";
+        this.map = await this.trip.initializeMap(
+          this.$refs.mapContainer,
+          { zoom: 16 },
+          { lat: -37.8136, lng: 144.9631 }
+        );
+        this.userLocation = { lat: -37.8136, lng: 144.9631 };
+        console.log('🗺️ Map initialized (fallback):', this.map);
+        this.showCurrentLocationMarker();
         return;
       }
 
-      try {
-        await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            () => {
-              this.gpsStatus = 'available';
-              resolve();
-            },
-            (error) => {
-              this.gpsStatus = 'error';
-              reject(error);
-            },
-            { timeout: 5000 }
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          console.log("✅ GPS available, initializing map...");
+          this.gpsStatus = "available";
+          this.map = await this.trip.initializeMap(
+            this.$refs.mapContainer,
+            { zoom: 16 },
+            { lat: pos.coords.latitude, lng: pos.coords.longitude }
           );
-        });
-      } catch (error) {
-        this.gpsStatus = error;
+          this.userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          console.log('🗺️ Map initialized:', this.map);
+          this.showCurrentLocationMarker();
+        },
+        async (err) => {
+          console.warn("⚠️ GPS access denied or unavailable:", err);
+          this.gpsStatus = "unavailable";
+          this.map = await this.trip.initializeMap(
+            this.$refs.mapContainer,
+            { zoom: 16 },
+            { lat: -37.8136, lng: 144.9631 }
+          );
+          this.userLocation = { lat: -37.8136, lng: 144.9631 };
+          console.log('🗺️ Map initialized (fallback):', this.map);
+          this.showCurrentLocationMarker();
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    },
+
+    showCurrentLocationMarker() {
+      if (!this.map || !this.userLocation) {
+        console.warn('⚠️ Cannot show current location marker - no map or location');
+        return;
       }
+
+      // Remove existing marker if any
+      if (this.currentLocationMarker) {
+        this.map.removeLayer(this.currentLocationMarker);
+      }
+
+      this.currentLocationMarker = L.marker(
+        [this.userLocation.lat, this.userLocation.lng],
+        {
+          icon: L.divIcon({
+            html: `
+              <div style="position: relative; width: 40px; height: 40px;">
+                <div style="
+                  width: 16px;
+                  height: 16px;
+                  background: #4285F4;
+                  border: 3px solid white;
+                  border-radius: 50%;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                  position: absolute;
+                  top: 12px;
+                  left: 12px;
+                  z-index: 2;
+                "></div>
+                <div class="pulse-ring" style="
+                  width: 40px;
+                  height: 40px;
+                  background: rgba(66, 133, 244, 0.3);
+                  border-radius: 50%;
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  animation: pulse 2s infinite;
+                  z-index: 1;
+                "></div>
+              </div>
+            `,
+            className: 'current-location-marker',
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
+          })
+        }
+      ).addTo(this.map);
+
+      this.currentLocationMarker.bindPopup('📍 Your Location');
+      console.log('📍 Current location marker added at', this.userLocation);
     },
 
     async loadUserCar() {
       try {
-        const token = localStorage.getItem('token')
-        if (!token) return
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
         const res = await fetch(`${API_BASE}/auth/car`, {
           headers: { Authorization: `Bearer ${token}` }
-        })
-        if (!res.ok) throw new Error('Failed to load car details')
-        const data = await res.json()
+        });
+
+        if (!res.ok) throw new Error('Failed to load car details');
+
+        const data = await res.json();
         if (data.car) {
-          this.car = data.car
-          // Also sync trip data with car info for saving later
+          this.car = data.car;
           this.trip.updateData({
             vehicleMake: this.car.make,
             vehicleModel: this.car.model,
             extraLoad: this.car.extraLoad
-          })
+          });
         }
       } catch (err) {
-        console.error('Error fetching car details:', err)
+        console.error('Error fetching car details:', err);
       }
     },
+
     formatExtraLoad(load) {
       const map = {
         none: 'None',
@@ -244,14 +410,21 @@ export default {
         'trailer-light': 'Trailer (Light)',
         'trailer-medium': 'Trailer (Medium)',
         'trailer-heavy': 'Trailer (Heavy)'
-      }
-      return map[load] || 'Unknown'
+      };
+      return map[load] || 'Unknown';
     },
 
     async handleStartTrip() {
       if (this.gpsStatus !== 'available') {
         alert('GPS is not available. Please enable location services.');
         return;
+      }
+
+      // Set route if planned
+      if (this.destination && this.calculatedRoutes) {
+        this.trip.setDestination(this.destination);
+        this.trip.setPlannedRoute(this.calculatedRoutes, this.selectedRouteType);
+        console.log('✅ Route set for trip:', this.selectedRouteType);
       }
 
       this.tripStartTime = Date.now();
@@ -277,17 +450,6 @@ export default {
       }
     },
 
-    // Car-specific methods
-    
-
-    getModelPlaceholder() {
-      if (!this.trip.data.vehicleMake) {
-        return 'Select make first';
-      }
-      return this.models.length ? 'Select Model' : 'Loading...';
-    },
-
-    // Utility methods
     formatDistance(distance) {
       const numDistance = Number(distance);
       return isNaN(numDistance) ? 0 : numDistance.toFixed(2);
@@ -306,23 +468,125 @@ export default {
 
     cleanup() {
       this.stopDurationTimer();
+
+      if (this.currentLocationMarker && this.map) {
+        this.map.removeLayer(this.currentLocationMarker);
+        this.currentLocationMarker = null;
+      }
+
       if (this.map) {
         try {
-          // Remove all event listeners first
           this.map.off();
           this.map.remove();
           console.log("🧹 Leaflet map removed safely.");
         } catch (err) {
-          console.warn("⚠ Leaflet cleanup warning:", err.message);
+          console.warn("⚠️ Leaflet cleanup warning:", err.message);
         } finally {
           this.map = null;
         }
       }
 
-      // Defensive: clear cached leaflet container if still present
       const mapEl = this.$refs.mapContainer;
       if (mapEl && mapEl._leaflet_id) {
         mapEl._leaflet_id = null;
+      }
+    },
+
+    handleDestinationSelected(dest) {
+      console.log('🎯 Destination selected:', dest);
+      this.destination = dest;
+      this.calculateRoutes();
+    },
+
+    handleDestinationCleared() {
+      console.log('🗑️ Destination cleared');
+      this.destination = null;
+      this.calculatedRoutes = null;
+      this.selectedRouteType = 'fastest';
+    },
+
+    async calculateRoutes() {
+      if (!this.destination || !this.userLocation) {
+        console.warn('⚠️ Cannot calculate routes - missing destination or user location');
+        return;
+      }
+
+      this.calculating = true;
+      console.log('🔄 Calculating routes...', {
+        start: this.userLocation,
+        destination: this.destination,
+        modes: this.enabledModes
+      });
+
+      try {
+        const response = await fetch(`${API_BASE}/routes/calculate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            start: {
+              lat: this.userLocation.lat,
+              lon: this.userLocation.lng
+            },
+            destination: this.destination,
+            enabled_modes: this.enabledModes
+          })
+        });
+
+        if (!response.ok) throw new Error('Route calculation failed');
+
+        const data = await response.json();
+        console.log('📥 Route calculation response:', data);
+
+        if (data.status === 'error') {
+          alert(data.message);
+          return;
+        }
+
+        this.calculatedRoutes = new PlannedRoute(data);
+        this.selectedRouteType = 'fastest';
+
+        console.log('✅ Routes calculated successfully:', {
+          fastest: this.calculatedRoutes.fastest,
+          greenest: this.calculatedRoutes.greenest,
+          showAlternative: this.calculatedRoutes.show_alternative
+        });
+
+      } catch (error) {
+        console.error('❌ Route calculation error:', error);
+        alert('Failed to calculate routes. Please try again.');
+      } finally {
+        this.calculating = false;
+      }
+    },
+
+    handleRouteSelected(routeType) {
+      console.log('✅ Route selected:', routeType);
+      this.selectedRouteType = routeType;
+    },
+
+    handleRouteClicked(routeType) {
+      console.log('🖱️ Route clicked:', routeType);
+      this.selectedRouteType = routeType;
+    },
+
+    debugMap() {
+      console.log('=== 🐛 MAP DEBUG ===');
+      console.log('Map instance:', this.map);
+      console.log('Map has layers:', this.map ? Object.keys(this.map._layers).length : 'No map');
+      console.log('User location:', this.userLocation);
+      console.log('Destination:', this.destination);
+      console.log('Calculated routes:', this.calculatedRoutes);
+      console.log('Has fastest route:', !!this.calculatedRoutes?.fastest);
+      console.log('Fastest path coords:', this.calculatedRoutes?.fastest?.path_coordinates);
+      console.log('Has greenest route:', !!this.calculatedRoutes?.greenest);
+      console.log('Show alternative:', this.calculatedRoutes?.show_alternative);
+      console.log('Selected route type:', this.selectedRouteType);
+      console.log('Current location marker:', this.currentLocationMarker);
+
+      if (this.map) {
+        console.log('Map center:', this.map.getCenter());
+        console.log('Map zoom:', this.map.getZoom());
+        console.log('Map bounds:', this.map.getBounds());
       }
     }
   }
@@ -350,12 +614,13 @@ export default {
 
 .map-overlay {
   position: absolute;
-  top: 10px;
+  top: 70px;
   left: 10px;
   background: rgba(255, 255, 255, 0.9);
   padding: 10px;
   border-radius: 6px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 999;
 }
 
 .distance-display {
@@ -392,9 +657,18 @@ export default {
 }
 
 @keyframes pulse {
-  0% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.2); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .controls-section {
@@ -472,35 +746,23 @@ export default {
   color: #333;
 }
 
-.additional-fields {
+.car-info-card {
   margin-bottom: 20px;
   padding: 15px;
   background: #f8f9fa;
   border-radius: 8px;
 }
 
-.additional-fields h3 {
-  margin: 0 0 15px 0;
+.car-info-card h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
   color: #333;
 }
 
-.field-group {
-  margin-bottom: 15px;
-}
-
-.field-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  color: #333;
-}
-
-.field-group select {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+.car-info-card p {
+  margin: 5px 0;
   font-size: 14px;
+  color: #666;
 }
 
 .gps-status {
@@ -530,5 +792,58 @@ export default {
   background: #f8d7da;
   color: #721c24;
   border: 1px solid #f5c6cb;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  color: white;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+  margin-top: 20px;
+  font-size: 18px;
+}
+
+.debug-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  padding: 10px 15px;
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.debug-button:hover {
+  background: #ff5252;
 }
 </style>
