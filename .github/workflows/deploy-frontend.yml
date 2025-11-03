@@ -24,14 +24,7 @@ jobs:
           npm install
           npm run build
 
-      - name: Deploy build to Nectar frontend server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.FRONT_HOST }}
-          username: ${{ secrets.FRONT_USER }}
-          key: ${{ secrets.FRONT_SSH_KEY }}
-          source: "frontend/dist/*"
-          target: "${{ secrets.FRONT_PATH }}/dist"
+      
 
       - name: Restart Nginx
         uses: appleboy/ssh-action@v1.0.0
