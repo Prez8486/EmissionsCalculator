@@ -21,8 +21,8 @@ jobs:
       - name: Install dependencies and build Vue app
         run: |
         
-          npm install
-          npm run build
+          sudo npm install
+          sudo npm run build
 
       - name: Deploy build to Nectar frontend server
         uses: appleboy/scp-action@v0.1.7
