@@ -18,15 +18,33 @@
         </div>
 
         <div class="user-actions">
-          <span v-if="isFriend(user)" class="badge friend">✅ Friends</span>
-          <div v-else-if="pendingRequests.some((r) => r._id === user._id)">
-            <button @click="acceptRequest(user._id)" class="accept-btn">✅ Accept</button>
-            <button @click="cancelRequest(user._id)" class="cancel-btn">❌ Cancel</button>
+          <!-- Friend status -->
+          <div v-if="isFriend(user)">
+            <span class="badge friend">✅ Friends</span>
+            <button @click="removeFriend(user._id)"
+                    class="remove-btn"
+                    title="Remove this friend">
+              🗑️ Remove
+            </button>
           </div>
 
-          <span v-else-if="user.friendRequests?.includes(currentUserId)" class="badge pending">
+          <!-- Pending requests -->
+          <div v-else-if="pendingRequests.some((r) => r._id === user._id)">
+            <button @click="acceptRequest(user._id)" class="accept-btn">
+              ✅ Accept
+            </button>
+            <button @click="cancelRequest(user._id)" class="cancel-btn">
+              ❌ Cancel
+            </button>
+          </div>
+
+          <!-- Sent requests -->
+          <span v-else-if="user.friendRequests?.includes(currentUserId)"
+                class="badge pending">
             ⏳ Request Sent
           </span>
+
+          <!-- Add new friend -->
           <button v-else
                   @click="sendFriendRequest(user._id)"
                   class="add-btn">
@@ -38,7 +56,7 @@
 
     <p v-else>No users found.</p>
 
-    <div v-if="statusMessage" :class="messageType" class="message-box">
+    <div v-if="statusMessage" :class="['message-box', messageType]">
       {{ statusMessage }}
     </div>
   </div>
@@ -81,6 +99,7 @@
       await this.loadAllUsers();
     },
     methods: {
+      // Load all users
       async loadAllUsers() {
         try {
           const token = localStorage.getItem("token");
@@ -93,73 +112,8 @@
           console.error("Failed to load all users:", err);
         }
       },
-      async acceptRequest(friendId) {
-        try {
-          const token = localStorage.getItem("token");
-          const res = await fetch(`${ API_BASE }/friends/accept/${ friendId }`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${ token }`,
-            "Content-Type": "application/json",
-        },
-      });
 
-      const data = await res.json();
-      if(res.ok) {
-    this.showMessage("✅ Friend request accepted!");
-    await this.loadFriends();
-    await this.loadRequests();
-  } else {
-    this.showMessage(  data.error || data.message );
-  }
-    } catch (err) {
-    console.error("Error accepting request:", err);
-    this.showMessage("❌ Failed to accept friend request.");
-  }
-      },
-      showMessage(message) {
-        this.statusMessage = message;
-        setTimeout(() => (this.statusMessage = ""), 3000);
-      },
-      async cancelRequest(friendId) {
-        try {
-          const token = localStorage.getItem("token");
-          const res = await fetch(`${ API_BASE }/friends/cancel/${ friendId }`, {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${ token }`,
-            "Content-Type": "application/json",
-        },
-      });
-
-      const data = await res.json();
-      if(res.ok) {
-    this.showMessage("❌ Friend request cancelled!");
-        this.pendingRequests = this.pendingRequests.filter(
-          (r) => r._id !== friendId
-        );
-        this.users = this.users.map((user) => {
-          if (user._id === friendId) {
-            // Reset their request indicators
-            return { ...user, friendRequests: [], sentRequests: [] };
-          }
-          return user;
-        });
-
-        // Optionally reload lists from backend to ensure sync
-        await new Promise(r => setTimeout(r, 700));
-        await this.loadRequests();
-        await this.loadAllUsers();
-  } else {
-    this.showMessage(data.error || data.message);
-  }
-    } catch (err) {
-    console.error("Error cancelling request:", err);
-    this.showMessage("❌ Failed to cancel friend request.");
-  }
-  },
-
-
+      // Load friend list
       async loadFriends() {
         const token = localStorage.getItem("token");
         const res = await fetch(`${API_BASE}/friends/list`, {
@@ -169,6 +123,7 @@
         this.friends = data.friends || [];
       },
 
+      // Load pending requests
       async loadRequests() {
         const token = localStorage.getItem("token");
         const res = await fetch(`${API_BASE}/friends/requests`, {
@@ -178,18 +133,61 @@
         this.pendingRequests = data.pendingRequests || [];
       },
 
-      isFriend(user) {
-        return this.friends.some((f) => f._id === user._id);
+      // Accept friend request
+      async acceptRequest(friendId) {
+        try {
+          const token = localStorage.getItem("token");
+          const res = await fetch(`${API_BASE}/friends/accept/${friendId}`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            this.showMessage("✅ Friend request accepted!", "success");
+            await this.loadFriends();
+            await this.loadRequests();
+          } else {
+            this.showMessage(data.error || data.message, "error");
+          }
+        } catch (err) {
+          console.error("Error accepting request:", err);
+          this.showMessage("❌ Failed to accept friend request.", "error");
+        }
       },
 
-      isRequestPending(user) {
-        // True if this user has sent a request to the other user
-        const hasSent = user.friendRequests?.some((r) => r === this.currentUserId);
-        // True if this user has received a request from the other user
-        const hasReceived = this.pendingRequests.some((r) => r._id === user._id);
-        return hasSent || hasReceived;
+      // Cancel friend request
+      async cancelRequest(friendId) {
+        try {
+          const token = localStorage.getItem("token");
+          const res = await fetch(`${API_BASE}/friends/cancel/${friendId}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            this.showMessage("❌ Friend request cancelled!", "info");
+            this.pendingRequests = this.pendingRequests.filter(
+              (r) => r._id !== friendId
+            );
+            await this.loadAllUsers();
+          } else {
+            this.showMessage(data.error || data.message, "error");
+          }
+        } catch (err) {
+          console.error("Error cancelling request:", err);
+          this.showMessage("❌ Failed to cancel friend request.", "error");
+        }
       },
 
+      // Send friend request
       async sendFriendRequest(friendId) {
         try {
           const token = localStorage.getItem("token");
@@ -201,16 +199,48 @@
 
           if (!res.ok) throw new Error(data.error || "Failed to send request");
 
-          this.statusMessage = data.message || "Friend request sent!";
-          this.messageType = "success";
-
-          // Refresh lists
+          this.showMessage("✅ Friend request sent!", "success");
           await this.loadRequests();
         } catch (err) {
           console.error("Error sending friend request:", err);
-          this.statusMessage = err.message;
-          this.messageType = "error";
+          this.showMessage(err.message, "error");
         }
+      },
+
+      // 🗑️ Remove a friend
+      async removeFriend(friendId) {
+        if (!confirm("Are you sure you want to remove this friend?")) return;
+        try {
+          const token = localStorage.getItem("token");
+          const res = await fetch(`${API_BASE}/friends/remove/${friendId}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+
+          if (res.ok) {
+            this.showMessage("🗑️ Friend removed successfully!", "success");
+            this.friends = this.friends.filter((f) => f._id !== friendId);
+            await this.loadAllUsers();
+          } else {
+            this.showMessage(data.error || data.message, "error");
+          }
+        } catch (err) {
+          console.error("Error removing friend:", err);
+          this.showMessage("❌ Failed to remove friend.", "error");
+        }
+      },
+
+      // Utility
+      showMessage(message, type = "info") {
+        this.statusMessage = message;
+        this.messageType = type;
+        setTimeout(() => (this.statusMessage = ""), 3000);
+      },
+
+      // Friend check
+      isFriend(user) {
+        return this.friends.some((f) => f._id === user._id);
       },
     },
   };
@@ -275,43 +305,25 @@
     font-size: 0.9rem;
   }
 
-  .add-btn {
+  .add-btn,
+  .accept-btn,
+  .cancel-btn,
+  .remove-btn {
     background: #2e7d32;
     color: white;
     border: none;
     padding: 6px 12px;
     border-radius: 6px;
     cursor: pointer;
+    margin-left: 4px;
   }
 
-    .add-btn:hover {
+    .add-btn:hover,
+    .accept-btn:hover,
+    .cancel-btn:hover,
+    .remove-btn:hover {
       background: #1b5e20;
     }
-  .cancel-btn {
-    background: #2e7d32;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-
-    .cancel-btn:hover {
-      background: #1b5e20;
-    }
-  .accept-btn {
-    background: #2e7d32;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-
-    .accept-btn:hover {
-      background: #1b5e20;
-    }
-
 
   .badge {
     padding: 6px 10px;
