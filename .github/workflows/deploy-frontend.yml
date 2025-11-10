@@ -24,6 +24,17 @@ jobs:
           sudo npm install
           sudo npm run build
 
+      - name: Clean and deploy build to Nectar frontend server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+            host: ${{ secrets.FRONT_HOST }}
+            username: ${{ secrets.FRONT_USER }}
+            key: ${{ secrets.FRONT_SSH_KEY }}
+            script: |
+                rm -rf ${{ secrets.FRONT_PATH }}
+                mkdir -p ${{ secrets.FRONT_PATH }}
+                chmod -R 755 ${{ secrets.FRONT_PATH }}
+
       - name: Deploy build to Nectar frontend server
         uses: appleboy/scp-action@v0.1.7
         with:
