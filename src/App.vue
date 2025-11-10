@@ -7,7 +7,7 @@
       <nav class="website-nav">
         <router-link to="/home">Home</router-link>
         <router-link to="/history">History</router-link>
-        <router-link to="/leaderboard">Leaderboard</router-link>
+        <router-link to="/leaderboard">Emission Leaderboard</router-link>
         <router-link to="/Comparison">Comparison</router-link>
         <router-link to="/info">Information Page</router-link>
         <router-link to="/timetable"> PTV Timetable</router-link>
