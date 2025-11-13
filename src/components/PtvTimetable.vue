@@ -92,7 +92,7 @@
         try {
           const res = await fetch(`${API_BASE}/ptv/stops/search/${encodeURIComponent(this.searchQuery)}`);
           const data = await res.json();
-          this.suggestions = data.slice(0, 8);
+          this.suggestions = data;
         } catch (err) {
           this.error = "Error fetching stops: " + err.message;
         }
