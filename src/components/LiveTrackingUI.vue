@@ -36,6 +36,34 @@
       </div>
     </div>
 
+    <!-- Time Variance Slider - Only show when NOT active and before route selection -->
+    <div v-if="!isActive" class="time-variance-control">
+      <div class="slider-header">
+        <label class="slider-label">
+          Time Flexibility for Greener Routes
+        </label>
+      </div>
+
+      <div class="slider-container">
+        <input
+          type="range"
+          v-model.number="localTimeVariance"
+          min="0"
+          max="100"
+          step="5"
+          class="time-slider"
+          @input="handleSliderChange"
+        />
+        <div class="slider-marks">
+          <span class="mark">0%</span>
+          <span class="mark">25%</span>
+          <span class="mark">50%</span>
+          <span class="mark">75%</span>
+          <span class="mark">100%</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Transport Mode Selector -->
     <TransportModeSelector
       v-if="showRouteSelection"
@@ -69,7 +97,7 @@
         :disabled="!isActive || loading"
         class="control-button end-button"
       >
-        <span class="button-icon">🏁</span>
+        <span class="button-icon">🛑</span>
         {{ loading ? 'Ending...' : 'End Trip' }}
       </button>
     </div>
@@ -110,13 +138,63 @@
       <span class="status-text">{{ gpsStatusText }}</span>
     </div>
 
+    <!-- AI Toggle Switch -->
+    <div v-if="!isActive" class="ai-toggle-section">
+      <div class="ai-toggle">
+        <label class="toggle-label">
+          <input
+            type="checkbox"
+            v-model="aiEnabled"
+            @change="handleAIToggle"
+            class="toggle-input"
+          />
+          <span class="toggle-slider"></span>
+          <span class="toggle-text">
+            🤖 Enable AI Transport Detection
+          </span>
+        </label>
+        <div v-if="aiEnabled" class="ai-description">
+          AI will analyze sensor data to automatically detect your transport mode
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showPredictionPopup" class="prediction-popup-overlay">
+      <div class="prediction-popup">
+        <div class="popup-header">
+          <span class="ai-icon">🤖</span>
+          <h3>Transport Mode Detected</h3>
+        </div>
+
+        <div class="popup-content">
+          <p>Our AI detected you're using:</p>
+          <div class="prediction-details">
+            <span class="predicted-mode">{{ currentPrediction.mode }}</span>
+            <span class="confidence">({{ (currentPrediction.confidence * 100).toFixed(1) }}% confident)</span>
+          </div>
+          <p class="comparison">
+            You selected: <strong>{{ selectedTransportMode }}</strong>
+          </p>
+        </div>
+
+        <div class="popup-actions">
+          <button @click="confirmPrediction" class="confirm-btn">
+            ✅ Switch to {{ currentPrediction.mode }}
+          </button>
+          <button @click="rejectPrediction" class="reject-btn">
+            ❌ Keep {{ selectedTransportMode }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Debug Button (remove in production) -->
     <button
       @click="debugMap"
       class="debug-button"
       v-if="!isActive"
     >
-      🐛 Debug
+      🛠 Debug
     </button>
   </div>
 </template>
@@ -156,6 +234,10 @@ export default {
     loading: {
       type: Boolean,
       default: false
+    },
+    aiPrediction: {
+      type: Object,
+      default: null
     }
   },
 
@@ -176,11 +258,26 @@ export default {
       selectedRouteType: 'fastest',
       calculating: false,
       recalcTimer: null,
-      currentLocationMarker: null
+      currentLocationMarker: null,
+      showPredictionPopup: false,
+      currentPrediction: null,
+
+      // Time Variance Slider
+      maxTimeVariance: 20, // default value
+      localTimeVariance: 20, // local copy for slider
+
+      //AI Toggle State
+      aiEnabled: false
     };
   },
 
   computed: {
+    preferences() {
+      return {
+        max_time_variance_percent: this.maxTimeVariance
+      };
+    },
+
     averageSpeed() {
       if (!this.isActive || !this.distance || !this.tripDuration) {
         return '0.0';
@@ -234,20 +331,6 @@ export default {
   },
 
   watch: {
-    map: {
-      handler(newMap) {
-        console.log('🗺️ Map instance changed:', !!newMap);
-      },
-      immediate: true
-    },
-
-    calculatedRoutes: {
-      handler(newVal) {
-        console.log('📊 Calculated routes changed:', !!newVal);
-      },
-      immediate: true
-    },
-
     isActive(newVal) {
       if (newVal) {
         this.startDurationTimer();
@@ -259,14 +342,24 @@ export default {
     enabledModes: {
       handler() {
         if (this.destination) {
-          clearTimeout(this.recalcTimer);
-          this.recalcTimer = setTimeout(() => {
-            this.calculateRoutes();
-          }, 500);
+          this.debouncedRecalculateRoutes();
         }
       },
       deep: true
-    }
+    },
+
+    aiPrediction: {
+      handler(newPrediction) {
+        console.log('👀 LiveTrackingUI watcher - aiPrediction changed:', newPrediction);
+        if (newPrediction && newPrediction.mode !== this.selectedTransportMode && newPrediction.confidence > 0.7) {
+          console.log('🎯 Conditions met - showing popup!');
+          this.showPredictionPopup = true;
+          this.currentPrediction = newPrediction;
+        }
+      },
+      immediate: true,
+      deep: true
+    },
   },
 
   mounted() {
@@ -427,6 +520,11 @@ export default {
         console.log('✅ Route set for trip:', this.selectedRouteType);
       }
 
+       // Set AI mode before starting trip
+      if (this.trip) {
+        this.trip.setAIMode(this.aiEnabled);
+      }
+
       this.tripStartTime = Date.now();
       this.$emit('start-trip');
     },
@@ -512,47 +610,87 @@ export default {
       }
 
       this.calculating = true;
-      console.log('🔄 Calculating routes...', {
-        start: this.userLocation,
-        destination: this.destination,
-        modes: this.enabledModes
-      });
+      console.log('\n========================================');
+      console.log('🔄 CALCULATING ROUTES - FRONTEND');
+      console.log('========================================');
+      console.log('Start:', this.userLocation);
+      console.log('Destination:', this.destination);
+      console.log('Enabled Modes:', this.enabledModes);
+      console.log('Max Time Variance:', this.maxTimeVariance + '%');
+      console.log('========================================\n');
 
       try {
+        const requestBody = {
+          start: {
+            lat: this.userLocation.lat,
+            lon: this.userLocation.lng
+          },
+          destination: this.destination,
+          enabled_modes: this.enabledModes,
+          preferences: this.preferences
+        };
+
+        console.log('📤 Request Body:', JSON.stringify(requestBody, null, 2));
+
         const response = await fetch(`${API_BASE}/routes/calculate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            start: {
-              lat: this.userLocation.lat,
-              lon: this.userLocation.lng
-            },
-            destination: this.destination,
-            enabled_modes: this.enabledModes
-          })
+          body: JSON.stringify(requestBody)
         });
 
-        if (!response.ok) throw new Error('Route calculation failed');
+        console.log('📡 Response Status:', response.status, response.statusText);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ Route calculation failed:', errorText);
+          throw new Error('Route calculation failed');
+        }
 
         const data = await response.json();
-        console.log('📥 Route calculation response:', data);
+        console.log('\n📥 Route Calculation Response:', data);
 
         if (data.status === 'error') {
+          console.error('❌ Backend returned error:', data.message);
           alert(data.message);
           return;
+        }
+
+        if (data.fallback_used) {
+          console.log('⚠️ Using OSM Fallback Route');
+          console.log('  Source:', data.fallback_source);
         }
 
         this.calculatedRoutes = new PlannedRoute(data);
         this.selectedRouteType = 'fastest';
 
-        console.log('✅ Routes calculated successfully:', {
-          fastest: this.calculatedRoutes.fastest,
-          greenest: this.calculatedRoutes.greenest,
-          showAlternative: this.calculatedRoutes.show_alternative
-        });
+        console.log('\n✅ Routes Processed Successfully:');
+        console.log('  Fastest:', !!this.calculatedRoutes.fastest);
+        console.log('  Greenest:', !!this.calculatedRoutes.greenest);
+        console.log('  Show Alternative:', this.calculatedRoutes.show_alternative);
+
+        if (this.calculatedRoutes.fastest) {
+          console.log('  Fastest Details:', {
+            distance: this.calculatedRoutes.fastest.total_distance_km + ' km',
+            time: this.calculatedRoutes.fastest.total_time_min + ' min',
+            emissions: this.calculatedRoutes.fastest.total_emissions_kg + ' kg'
+          });
+        }
+
+        if (this.calculatedRoutes.greenest) {
+          console.log('  Greenest Details:', {
+            distance: this.calculatedRoutes.greenest.total_distance_km + ' km',
+            time: this.calculatedRoutes.greenest.total_time_min + ' min',
+            emissions: this.calculatedRoutes.greenest.total_emissions_kg + ' kg'
+          });
+        }
+
+        console.log('========================================\n');
 
       } catch (error) {
-        console.error('❌ Route calculation error:', error);
+        console.error('\n❌ ROUTE CALCULATION ERROR:');
+        console.error('Message:', error.message);
+        console.error('Stack:', error.stack);
+        console.log('========================================\n');
         alert('Failed to calculate routes. Please try again.');
       } finally {
         this.calculating = false;
@@ -570,14 +708,16 @@ export default {
     },
 
     debugMap() {
-      console.log('=== 🐛 MAP DEBUG ===');
+      console.log('\n=== 🛠 MAP DEBUG ===');
       console.log('Map instance:', this.map);
       console.log('Map has layers:', this.map ? Object.keys(this.map._layers).length : 'No map');
       console.log('User location:', this.userLocation);
       console.log('Destination:', this.destination);
+      console.log('Max Time Variance:', this.maxTimeVariance + '%');
+      console.log('Enabled Modes:', this.enabledModes);
       console.log('Calculated routes:', this.calculatedRoutes);
       console.log('Has fastest route:', !!this.calculatedRoutes?.fastest);
-      console.log('Fastest path coords:', this.calculatedRoutes?.fastest?.path_coordinates);
+      console.log('Fastest path coords:', this.calculatedRoutes?.fastest?.path_coordinates?.length);
       console.log('Has greenest route:', !!this.calculatedRoutes?.greenest);
       console.log('Show alternative:', this.calculatedRoutes?.show_alternative);
       console.log('Selected route type:', this.selectedRouteType);
@@ -588,7 +728,84 @@ export default {
         console.log('Map zoom:', this.map.getZoom());
         console.log('Map bounds:', this.map.getBounds());
       }
-    }
+      console.log('==================\n');
+    },
+
+    // Slider Methods
+    handleSliderChange() {
+      // Update the main value
+      this.maxTimeVariance = this.localTimeVariance;
+
+      console.log('🎚️ Time variance changed to:', this.maxTimeVariance + '%');
+
+      // Recalculate routes if we have a destination
+      if (this.destination) {
+        this.debouncedRecalculateRoutes();
+      }
+    },
+
+    debouncedRecalculateRoutes() {
+      // Debounce route recalculations to avoid too many API calls
+      clearTimeout(this.recalcTimer);
+      this.recalcTimer = setTimeout(() => {
+        console.log('♻️ Recalculating routes with new time variance...');
+        this.calculateRoutes();
+      }, 800);
+    },
+
+    //AI Toggle Methods
+    handleAIToggle() {
+      console.log('🤖 AI Mode:', this.aiEnabled ? 'ENABLED' : 'DISABLED');
+
+      if (this.aiEnabled) {
+        this.showMessage('AI transport detection enabled. Starting sensor collection when trip begins.', 'info');
+      } else {
+        this.showMessage('AI transport detection disabled.', 'info');
+      }
+
+      // Pass AI state to trip instance
+      if (this.trip) {
+        this.trip.setAIMode(this.aiEnabled);
+      }
+    },
+
+    // Helper method for messages (add this if you don't have it)
+    showMessage(text, type = 'info') {
+      // You can use alert for now, or implement a proper toast notification
+      if (type === 'info') {
+        console.log('💡 ' + text);
+      } else if (type === 'warning') {
+        console.warn('⚠️ ' + text);
+      }
+    },
+
+    handleAIPrediction(prediction) {
+      console.log('🤖 AI Prediction received in LiveTrackingUI:', prediction);
+      this.aiPrediction = prediction;
+
+      // Show popup if confidence threshold is met and mode differs
+      if (prediction.mode !== this.selectedTransportMode && prediction.confidence > 0.7) {
+        console.log('🎯 Showing prediction popup!');
+        this.showPredictionPopup = true;
+        this.currentPrediction = prediction;
+      }
+    },
+    // Also add these if you don't have them:
+    confirmPrediction() {
+      console.log(`🔄 User confirmed mode change to: ${this.currentPrediction.mode}`);
+      this.selectedTransportMode = this.currentPrediction.mode;
+      this.closePredictionPopup();
+    },
+
+    rejectPrediction() {
+      console.log('❌ User rejected AI prediction');
+      this.closePredictionPopup();
+    },
+
+    closePredictionPopup() {
+      this.showPredictionPopup = false;
+      this.currentPrediction = null;
+    },
   }
 };
 </script>
@@ -846,4 +1063,247 @@ export default {
 .debug-button:hover {
   background: #ff5252;
 }
+
+/* Time Variance Slider Styles */
+.time-variance-control {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  border: 2px solid #e9ecef;
+}
+
+.slider-header {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.slider-label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 1rem;
+}
+
+.slider-container {
+  margin-bottom: 12px;
+}
+
+.time-slider {
+  width: 100%;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(to right, #ffffff 0%, #a8e6a1 25%, #66bb6a 50%, #43a047 75%, #2e7d32 100%);
+  outline: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.time-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid #2e7d32;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+}
+
+.time-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  border-color: #1b5e20;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+}
+
+.time-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid #2e7d32;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+}
+
+.time-slider::-moz-range-thumb:hover {
+  transform: scale(1.15);
+  border-color: #1b5e20;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+}
+
+.slider-marks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 0 4px;
+}
+
+.mark {
+  font-size: 0.75rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .time-variance-control {
+    padding: 16px;
+  }
+
+  .slider-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .slider-value {
+    align-self: flex-end;
+  }
+
+  .trip-stats {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .controls-section {
+    flex-direction: column;
+  }
+}
+
+.ai-toggle-section {
+  margin: 15px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.ai-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.toggle-input {
+  display: none;
+}
+
+.toggle-slider {
+  width: 50px;
+  height: 24px;
+  background: #ccc;
+  border-radius: 24px;
+  position: relative;
+  transition: background 0.3s;
+}
+
+.toggle-slider:before {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s;
+}
+
+.toggle-input:checked + .toggle-slider {
+  background: #4CAF50;
+}
+
+.toggle-input:checked + .toggle-slider:before {
+  transform: translateX(26px);
+}
+
+.toggle-text {
+  font-size: 1em;
+}
+
+.ai-description {
+  font-size: 0.9em;
+  color: #6c757d;
+  padding-left: 62px;
+}
+
+.prediction-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.prediction-popup {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.prediction-details {
+  margin: 16px 0;
+  text-align: center;
+}
+
+.predicted-mode {
+  font-size: 24px;
+  font-weight: bold;
+  color: #4285F4;
+  text-transform: capitalize;
+}
+
+.popup-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.confirm-btn, .reject-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.confirm-btn {
+  background: #34A853;
+  color: white;
+}
+
+.reject-btn {
+  background: #EA4335;
+  color: white;
+}
+
 </style>

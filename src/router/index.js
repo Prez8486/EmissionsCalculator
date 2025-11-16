@@ -1,10 +1,10 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 import Home from '../components/Home.vue';
-import FormCar from '../components/FormCar.vue';
-import FormBus from '../components/FormBus.vue';
-import FormTram from '../components/FormTram.vue';
-import FormMetro from '../components/FormMetro.vue';
-import FormFlight from '../components/FormFlight.vue';
+import FormCar from '../components/Archived/FormCar.vue';
+import FormBus from '../components/Archived/FormBus.vue';
+import FormTram from '../components/Archived/FormTram.vue';
+import FormMetro from '../components/Archived/FormMetro.vue';
+import FormFlight from '../components/Archived/FormFlight.vue';
 import Login from '../components/Login.vue';
 import Register from '../components/Register.vue';
 import History from '../components/History.vue';
@@ -38,7 +38,7 @@ const routes = [
   { path: '/info', component: InformationPage },
   { path: '/friendspage', component: FriendsPage },
   { path: '/timetable', component: PtvTimetable },
-  
+
   {
     path: '/base-form',
     component: BaseTransportForm,

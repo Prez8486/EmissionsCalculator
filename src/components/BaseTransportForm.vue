@@ -15,6 +15,7 @@
       :is-active="tripState.isActive"
       :distance="tripState.data.distance || 0"
       :loading="tripState.loading"
+      :ai-prediction="aiPrediction"
       @start-trip="startTrip"
       @end-trip="endTrip"
     />
@@ -31,7 +32,7 @@
       @update-field="updateField"
       @calculate="calculateEmissions"
       @save-trip="saveTrip"
-      
+
     />
 
     <!-- AI Prediction Display (Live Mode Only) -->
@@ -51,7 +52,6 @@
         </div>
       </div>
     </div>
-
     <!-- Emissions Results (Both Modes) -->
     <!--<EmissionsSummary
       v-if="tripState.emission"
@@ -83,7 +83,7 @@
 </template>
 
 <script>
-  import { nextTick } from 'vue';
+import { nextTick } from 'vue';
 import { LiveTrip } from '../models/LiveTrip.js';
 import { ManualTrip } from '../models/ManualTrip.js';
 import { CarAPIPlugin } from '../plugins/carAPI.js';
@@ -93,6 +93,7 @@ import LiveTrackingUI from './LiveTrackingUI.vue';
 import ManualInputUI from './ManualTrackingUI.vue';
 import EmissionsSummary from './EmissionsSummary.vue';
 import TripSummary from './TripSummary.vue';
+import { API_BASE } from '@/config/apiConfig';
 
 export default {
   name: 'BaseTransportForm',
@@ -135,6 +136,8 @@ export default {
       showTripSummary: false,
       tripSummaryData: null,
       predictionMismatch: false,
+      showPredictionPopup: false,
+      currentPrediction: null,
 
       // Track trip timing
       tripStartTime: null,
@@ -278,31 +281,83 @@ export default {
     async endTrip() {
       if (this.tripEnding) return; // prevent double-clicks
       this.tripEnding = true;
-      console.log("End trip");
+      console.log("Ending trip...");
+
       this.tripEndTime = Date.now();
       const success = await this.trip.endTrip();
-      console.log(success);
-      if (success) {
-        console.log("End trip success");
-        // In live mode, automatically save the trip first
+
+      if (!success) {
+        this.showMessage('Failed to end trip', 'error');
+        this.tripEnding = false;
+        return;
+      }
+
+      console.log("Trip ended successfully");
+
+      try {
+        // Step 1: Calculate emissions
         const emissionCalculated = await this.trip.calculateEmissions();
         if (!emissionCalculated) {
           this.showMessage("⚠ Could not calculate emissions automatically.", "warning");
         }
 
-        // Calculate trip duration with proper fallbacks
+        // Step 2: Prepare trip data
         const duration = this.calculateTripDuration();
         const distance = this.tripState.data.distance || 0;
         const emission = this.tripState.emission || this.trip.data.emissionKg || 0;
 
-        console.log('Trip data for summary:', {
-          duration,
-          distance,
-          emission,
-          tripState: this.tripState
-        });
+        console.log('Trip data:', { duration, distance, emission, path: this.trip.path });
 
-        // Prepare trip summary data with proper validation
+        // Step 3: Auto-save trip immediately (for live mode)
+        if (this.isLiveMode) {
+          this.showMessage("💾 Saving trip...", "info");
+          const saved = await this.trip.saveTrip();
+
+          if (!saved) {
+            this.showMessage("⚠ Failed to save trip", "warning");
+          } else {
+            console.log("✅ Trip saved successfully");
+          }
+        }
+
+        // Step 4: Call post-trip analysis API
+        let analysisData = null;
+
+        if (this.isLiveMode && this.trip.path && this.trip.path.length >= 2) {
+          this.showMessage("🔍 Analyzing your route...", "info");
+
+          try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE}/routes/post-trip-analysis`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                trip_id: this.trip.tripId || 'temp-' + Date.now(),
+                actual_route: this.trip.path.map(coord => ({
+                  lat: Array.isArray(coord) ? coord[0] : coord.lat,
+                  lon: Array.isArray(coord) ? coord[1] : (coord.lon || coord.lng)
+                })),
+                actual_emissions: emission,
+                transport_mode: this.transportMode
+              })
+            });
+
+            if (response.ok) {
+              analysisData = await response.json();
+              console.log('✅ Post-trip analysis received:', analysisData);
+            } else {
+              console.warn('Post-trip analysis failed:', response.status);
+            }
+          } catch (error) {
+            console.error('Post-trip analysis error:', error);
+            // Don't fail the trip if analysis fails
+          }
+        }
+
+        // Step 5: Prepare trip summary data
         this.tripSummaryData = {
           transportMode: this.transportMode,
           distance: distance,
@@ -312,18 +367,34 @@ export default {
           aiPrediction: this.aiPrediction,
           startTime: this.tripStartTime,
           endTime: this.tripEndTime,
-          // Add formatted strings for display
+
+          // Formatted strings for display
           distanceDisplay: `${distance.toFixed(2)} km`,
           emissionDisplay: `${emission.toFixed(3)} kg CO₂`,
           durationDisplay: this.formatDurationString(duration),
-          averageSpeedDisplay: this.calculateAverageSpeedDisplay(distance, duration)
+          averageSpeedDisplay: this.calculateAverageSpeedDisplay(distance, duration),
+
+          // Post-trip analysis data
+          analysis: analysisData,
+          autoSaved: this.isLiveMode
         };
 
         console.log('Formatted trip summary data:', this.tripSummaryData);
 
-        // Show summary modal
+        // Step 6: Show summary modal
         this.showTripSummary = true;
-        this.showMessage('Trip completed! Review your summary below.', 'success');
+
+        if (analysisData?.has_green_alternative) {
+          this.showMessage('✅ Trip completed! Review your environmental impact below.', 'success');
+        } else {
+          this.showMessage('✅ Trip completed! You took an efficient route.', 'success');
+        }
+
+      } catch (error) {
+        console.error('Error in endTrip flow:', error);
+        this.showMessage('⚠ Trip ended but analysis failed', 'warning');
+      } finally {
+        this.tripEnding = false;
       }
     },
 
@@ -461,7 +532,7 @@ export default {
       console.log('Distance update:', distance);
     },
 
-    handlePredictionReceived(prediction) {
+    /*handlePredictionReceived(prediction) {
       console.log('AI Prediction received:', prediction);
       this.aiPrediction = prediction;
 
@@ -469,6 +540,36 @@ export default {
       this.predictionMismatch = prediction.mode !== this.transportMode && prediction.confidence > 0.7;
 
       if (this.predictionMismatch) {
+        this.showMessage(
+          `AI detected ${prediction.mode} transport (${(prediction.confidence * 100).toFixed(1)}% confident). You selected ${this.transportMode}. Is this correct?`,
+          'warning'
+        );
+      }
+
+      // EMIT TO PARENT COMPONENT (LiveTrackingUI.vue)
+      this.$emit('prediction-received', prediction);
+    }, */
+
+    handlePredictionReceived(prediction) {
+      console.log('🎯 AI Prediction received in BaseTransportForm:', prediction);
+      console.log('🎯 Current transport mode:', this.transportMode);
+      console.log('🎯 Mismatch?', prediction.mode !== this.transportMode);
+      console.log('🎯 Confidence:', prediction.confidence);
+
+      this.aiPrediction = prediction;
+
+      // Check for mismatch
+      this.predictionMismatch = prediction.mode !== this.transportMode && prediction.confidence > 0.7;
+
+      console.log('🎯 Should show popup?', this.predictionMismatch);
+
+      if (this.predictionMismatch) {
+        console.log('🎯 Setting current prediction for popup:', prediction);
+
+        // Set the current prediction to trigger the popup
+        this.currentPrediction = prediction;
+        this.showPredictionPopup = true;
+
         this.showMessage(
           `AI detected ${prediction.mode} transport (${(prediction.confidence * 100).toFixed(1)}% confident). You selected ${this.transportMode}. Is this correct?`,
           'warning'
@@ -495,31 +596,37 @@ export default {
       }
     },
     async saveTripFromSummary() {
+      // For live trips, already saved automatically
+      if (this.isLiveMode) {
+        this.showMessage("✅ Trip already saved!", "success");
+        this.closeTripSummary();
+        return;
+      }
+
+      // For manual trips, save now
       if (this.tripSaved) return; // prevent double saves
       this.tripSaved = true;
+
       try {
-        if (!this.trip) return;
-
         this.showMessage("Saving trip...", "info");
-
         const success = await this.trip.saveTrip();
 
         if (success) {
           this.showMessage("✅ Trip saved successfully!", "success");
-          this.showTripSummary = false;
-
-          // Redirect to home after 2 seconds
           setTimeout(() => {
             this.$router.push("/home");
-          }, 2000);
+          }, 1500);
         } else {
           this.showMessage("❌ Failed to save trip.", "warning");
+          this.tripSaved = false;
         }
       } catch (err) {
         console.error("Error saving trip:", err);
         this.showMessage("⚠ Error saving trip. Check console.", "warning");
+        this.tripSaved = false;
       }
     },
+
     getTransportIcon(mode) {
       const icons = {
         car: '🚗',
@@ -529,7 +636,7 @@ export default {
         flight: '✈️'
       };
       return icons[mode] || '🚶';
-    }
+    },
   }
 };
 </script>
@@ -668,5 +775,111 @@ export default {
   color: #856404;
   font-size: 0.85rem;
   font-style: italic;
+}
+
+.prediction-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.prediction-popup {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  animation: popIn 0.3s ease-out;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ai-icon {
+  font-size: 24px;
+}
+
+.popup-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.prediction-details {
+  margin: 16px 0;
+  text-align: center;
+}
+
+.predicted-mode {
+  font-size: 24px;
+  font-weight: bold;
+  color: #4285F4;
+  text-transform: capitalize;
+}
+
+.confidence {
+  color: #666;
+  font-size: 14px;
+}
+
+.comparison {
+  color: #666;
+  text-align: center;
+}
+
+.popup-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.confirm-btn, .reject-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.confirm-btn {
+  background: #34A853;
+  color: white;
+}
+
+.confirm-btn:hover {
+  background: #2E8B47;
+}
+
+.reject-btn {
+  background: #EA4335;
+  color: white;
+}
+
+.reject-btn:hover {
+  background: #D33426;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 </style>

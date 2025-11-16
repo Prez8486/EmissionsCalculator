@@ -31,10 +31,17 @@ export default {
 
   data() {
     return {
-      fastestPolyline: null,
-      greenestPolyline: null,
+      fastestPolylines: [],
+      greenestPolylines: [],
       startMarker: null,
-      destMarker: null
+      destMarker: null,
+      modeColors: {
+        car: '#FF5722',      // Red-Orange
+        walk: '#4CAF50',     // Green
+        train: '#2196F3',    // Blue
+        tram: '#9C27B0',     // Purple
+        bus: '#FF9800'       // Orange
+      }
     };
   },
 
@@ -142,50 +149,16 @@ export default {
           console.log('🎯 Destination marker added');
         }
 
-        // Draw fastest route (blue)
-        const fastestCoords = this.fastestRoute.path_coordinates.map(
-          coord => [coord.lat, coord.lon]
-        );
+        // Draw fastest route with segments by mode
+        if (this.fastestRoute.segments) {
+          console.log('⚡ Drawing fastest route segments:', this.fastestRoute.segments.length);
+          this.drawSegmentedRoute(this.fastestRoute.segments, 'fastest');
+        }
 
-        console.log('⚡ Drawing fastest route with', fastestCoords.length, 'coordinates');
-
-        this.fastestPolyline = L.polyline(fastestCoords, {
-          color: '#4285F4',
-          weight: 6,
-          opacity: this.selectedRoute === 'fastest' ? 1.0 : 0.5,
-          lineJoin: 'round'
-        }).addTo(this.map);
-
-        // Add click handler
-        this.fastestPolyline.on('click', () => {
-          console.log('⚡ Fastest route clicked');
-          this.$emit('route-clicked', 'fastest');
-        });
-
-        console.log('✅ Fastest route polyline added to map');
-
-        // Draw greenest route (green) if available
-        if (this.showGreenest && this.greenestRoute && this.greenestRoute.path_coordinates) {
-          const greenestCoords = this.greenestRoute.path_coordinates.map(
-            coord => [coord.lat, coord.lon]
-          );
-
-          console.log('🌱 Drawing greenest route with', greenestCoords.length, 'coordinates');
-
-          this.greenestPolyline = L.polyline(greenestCoords, {
-            color: '#34A853',
-            weight: 6,
-            opacity: this.selectedRoute === 'greenest' ? 1.0 : 0.4,
-            lineJoin: 'round'
-          }).addTo(this.map);
-
-          // Add click handler
-          this.greenestPolyline.on('click', () => {
-            console.log('🌱 Greenest route clicked');
-            this.$emit('route-clicked', 'greenest');
-          });
-
-          console.log('✅ Greenest route polyline added to map');
+        // Draw greenest route with segments if available
+        if (this.showGreenest && this.greenestRoute && this.greenestRoute.segments) {
+          console.log('🌱 Drawing greenest route segments:', this.greenestRoute.segments.length);
+          this.drawSegmentedRoute(this.greenestRoute.segments, 'greenest');
         }
 
         // Fit map to show all routes
@@ -196,27 +169,72 @@ export default {
       }
     },
 
+    drawSegmentedRoute(segments, routeType) {
+      const isSelected = this.selectedRoute === routeType;
+      const opacity = isSelected ? 0.9 : 0.4;
+      const weight = isSelected ? 7 : 5;
+
+      segments.forEach((segment) => {
+        const coords = [
+          [segment.from_lat, segment.from_lon],
+          [segment.to_lat, segment.to_lon]
+        ];
+
+        const color = this.modeColors[segment.mode] || '#4285F4';
+
+        const polyline = L.polyline(coords, {
+          color: color,
+          weight: weight,
+          opacity: opacity,
+          lineJoin: 'round',
+          lineCap: 'round'
+        }).addTo(this.map);
+
+        // Add popup with segment info
+        polyline.bindPopup(`
+          <b>${this.getModeIcon(segment.mode)} ${segment.mode.toUpperCase()}</b><br/>
+          Distance: ${segment.distance_km.toFixed(2)} km<br/>
+          Time: ${segment.time_min.toFixed(1)} min<br/>
+          Emissions: ${segment.emissions_kg.toFixed(3)} kg CO₂
+        `);
+
+        // Add click handler
+        polyline.on('click', () => {
+          console.log(`${routeType} route segment clicked:`, segment.mode);
+          this.$emit('route-clicked', routeType);
+        });
+
+        // Store polylines for later updates
+        if (routeType === 'fastest') {
+          this.fastestPolylines.push(polyline);
+        } else {
+          this.greenestPolylines.push(polyline);
+        }
+      });
+
+      console.log(`✅ ${routeType} route drawn with ${segments.length} segments`);
+    },
+
     updateSelection() {
       console.log('🔄 Updating route selection to', this.selectedRoute);
 
-      if (!this.fastestPolyline) {
-        console.warn('⚠️ No polylines to update');
-        return;
-      }
-
-      // Update fastest route style
-      this.fastestPolyline.setStyle({
-        opacity: this.selectedRoute === 'fastest' ? 1.0 : 0.5,
-        weight: this.selectedRoute === 'fastest' ? 8 : 6
+      // Update fastest route segments
+      this.fastestPolylines.forEach(polyline => {
+        const isSelected = this.selectedRoute === 'fastest';
+        polyline.setStyle({
+          opacity: isSelected ? 0.9 : 0.4,
+          weight: isSelected ? 7 : 5
+        });
       });
 
-      // Update greenest route style
-      if (this.greenestPolyline) {
-        this.greenestPolyline.setStyle({
-          opacity: this.selectedRoute === 'greenest' ? 1.0 : 0.4,
-          weight: this.selectedRoute === 'greenest' ? 8 : 6
+      // Update greenest route segments
+      this.greenestPolylines.forEach(polyline => {
+        const isSelected = this.selectedRoute === 'greenest';
+        polyline.setStyle({
+          opacity: isSelected ? 0.9 : 0.4,
+          weight: isSelected ? 7 : 5
         });
-      }
+      });
 
       console.log('✅ Route styles updated');
     },
@@ -241,15 +259,17 @@ export default {
     clearRoutes() {
       console.log('🧹 Clearing existing routes');
 
-      if (this.fastestPolyline) {
-        this.map.removeLayer(this.fastestPolyline);
-        this.fastestPolyline = null;
-      }
+      // Clear fastest polylines
+      this.fastestPolylines.forEach(polyline => {
+        this.map.removeLayer(polyline);
+      });
+      this.fastestPolylines = [];
 
-      if (this.greenestPolyline) {
-        this.map.removeLayer(this.greenestPolyline);
-        this.greenestPolyline = null;
-      }
+      // Clear greenest polylines
+      this.greenestPolylines.forEach(polyline => {
+        this.map.removeLayer(polyline);
+      });
+      this.greenestPolylines = [];
 
       if (this.startMarker) {
         this.map.removeLayer(this.startMarker);
@@ -260,6 +280,17 @@ export default {
         this.map.removeLayer(this.destMarker);
         this.destMarker = null;
       }
+    },
+
+    getModeIcon(mode) {
+      const icons = {
+        car: '🚗',
+        walk: '🚶',
+        train: '🚆',
+        tram: '🚊',
+        bus: '🚌'
+      };
+      return icons[mode] || '🚶';
     }
   }
 };
