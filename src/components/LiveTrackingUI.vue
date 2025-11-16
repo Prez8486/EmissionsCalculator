@@ -36,6 +36,34 @@
       </div>
     </div>
 
+    <!-- Time Variance Slider - Only show when NOT active and before route selection -->
+    <div v-if="!isActive" class="time-variance-control">
+      <div class="slider-header">
+        <label class="slider-label">
+          Time Flexibility for Greener Routes
+        </label>
+      </div>
+
+      <div class="slider-container">
+        <input
+          type="range"
+          v-model.number="localTimeVariance"
+          min="0"
+          max="100"
+          step="5"
+          class="time-slider"
+          @input="handleSliderChange"
+        />
+        <div class="slider-marks">
+          <span class="mark">0%</span>
+          <span class="mark">25%</span>
+          <span class="mark">50%</span>
+          <span class="mark">75%</span>
+          <span class="mark">100%</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Transport Mode Selector -->
     <TransportModeSelector
       v-if="showRouteSelection"
@@ -69,7 +97,7 @@
         :disabled="!isActive || loading"
         class="control-button end-button"
       >
-        <span class="button-icon">🏁</span>
+        <span class="button-icon">🛑</span>
         {{ loading ? 'Ending...' : 'End Trip' }}
       </button>
     </div>
@@ -116,7 +144,7 @@
       class="debug-button"
       v-if="!isActive"
     >
-      🐛 Debug
+      🛠 Debug
     </button>
   </div>
 </template>
@@ -176,11 +204,21 @@ export default {
       selectedRouteType: 'fastest',
       calculating: false,
       recalcTimer: null,
-      currentLocationMarker: null
+      currentLocationMarker: null,
+
+      // Time Variance Slider
+      maxTimeVariance: 20, // default value
+      localTimeVariance: 20 // local copy for slider
     };
   },
 
   computed: {
+    preferences() {
+      return {
+        max_time_variance_percent: this.maxTimeVariance
+      };
+    },
+
     averageSpeed() {
       if (!this.isActive || !this.distance || !this.tripDuration) {
         return '0.0';
@@ -234,20 +272,6 @@ export default {
   },
 
   watch: {
-    map: {
-      handler(newMap) {
-        console.log('🗺️ Map instance changed:', !!newMap);
-      },
-      immediate: true
-    },
-
-    calculatedRoutes: {
-      handler(newVal) {
-        console.log('📊 Calculated routes changed:', !!newVal);
-      },
-      immediate: true
-    },
-
     isActive(newVal) {
       if (newVal) {
         this.startDurationTimer();
@@ -259,10 +283,7 @@ export default {
     enabledModes: {
       handler() {
         if (this.destination) {
-          clearTimeout(this.recalcTimer);
-          this.recalcTimer = setTimeout(() => {
-            this.calculateRoutes();
-          }, 500);
+          this.debouncedRecalculateRoutes();
         }
       },
       deep: true
@@ -512,47 +533,87 @@ export default {
       }
 
       this.calculating = true;
-      console.log('🔄 Calculating routes...', {
-        start: this.userLocation,
-        destination: this.destination,
-        modes: this.enabledModes
-      });
+      console.log('\n========================================');
+      console.log('🔄 CALCULATING ROUTES - FRONTEND');
+      console.log('========================================');
+      console.log('Start:', this.userLocation);
+      console.log('Destination:', this.destination);
+      console.log('Enabled Modes:', this.enabledModes);
+      console.log('Max Time Variance:', this.maxTimeVariance + '%');
+      console.log('========================================\n');
 
       try {
+        const requestBody = {
+          start: {
+            lat: this.userLocation.lat,
+            lon: this.userLocation.lng
+          },
+          destination: this.destination,
+          enabled_modes: this.enabledModes,
+          preferences: this.preferences
+        };
+
+        console.log('📤 Request Body:', JSON.stringify(requestBody, null, 2));
+
         const response = await fetch(`${API_BASE}/routes/calculate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            start: {
-              lat: this.userLocation.lat,
-              lon: this.userLocation.lng
-            },
-            destination: this.destination,
-            enabled_modes: this.enabledModes
-          })
+          body: JSON.stringify(requestBody)
         });
 
-        if (!response.ok) throw new Error('Route calculation failed');
+        console.log('📡 Response Status:', response.status, response.statusText);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ Route calculation failed:', errorText);
+          throw new Error('Route calculation failed');
+        }
 
         const data = await response.json();
-        console.log('📥 Route calculation response:', data);
+        console.log('\n📥 Route Calculation Response:', data);
 
         if (data.status === 'error') {
+          console.error('❌ Backend returned error:', data.message);
           alert(data.message);
           return;
+        }
+
+        if (data.fallback_used) {
+          console.log('⚠️ Using OSM Fallback Route');
+          console.log('  Source:', data.fallback_source);
         }
 
         this.calculatedRoutes = new PlannedRoute(data);
         this.selectedRouteType = 'fastest';
 
-        console.log('✅ Routes calculated successfully:', {
-          fastest: this.calculatedRoutes.fastest,
-          greenest: this.calculatedRoutes.greenest,
-          showAlternative: this.calculatedRoutes.show_alternative
-        });
+        console.log('\n✅ Routes Processed Successfully:');
+        console.log('  Fastest:', !!this.calculatedRoutes.fastest);
+        console.log('  Greenest:', !!this.calculatedRoutes.greenest);
+        console.log('  Show Alternative:', this.calculatedRoutes.show_alternative);
+
+        if (this.calculatedRoutes.fastest) {
+          console.log('  Fastest Details:', {
+            distance: this.calculatedRoutes.fastest.total_distance_km + ' km',
+            time: this.calculatedRoutes.fastest.total_time_min + ' min',
+            emissions: this.calculatedRoutes.fastest.total_emissions_kg + ' kg'
+          });
+        }
+
+        if (this.calculatedRoutes.greenest) {
+          console.log('  Greenest Details:', {
+            distance: this.calculatedRoutes.greenest.total_distance_km + ' km',
+            time: this.calculatedRoutes.greenest.total_time_min + ' min',
+            emissions: this.calculatedRoutes.greenest.total_emissions_kg + ' kg'
+          });
+        }
+
+        console.log('========================================\n');
 
       } catch (error) {
-        console.error('❌ Route calculation error:', error);
+        console.error('\n❌ ROUTE CALCULATION ERROR:');
+        console.error('Message:', error.message);
+        console.error('Stack:', error.stack);
+        console.log('========================================\n');
         alert('Failed to calculate routes. Please try again.');
       } finally {
         this.calculating = false;
@@ -570,14 +631,16 @@ export default {
     },
 
     debugMap() {
-      console.log('=== 🐛 MAP DEBUG ===');
+      console.log('\n=== 🛠 MAP DEBUG ===');
       console.log('Map instance:', this.map);
       console.log('Map has layers:', this.map ? Object.keys(this.map._layers).length : 'No map');
       console.log('User location:', this.userLocation);
       console.log('Destination:', this.destination);
+      console.log('Max Time Variance:', this.maxTimeVariance + '%');
+      console.log('Enabled Modes:', this.enabledModes);
       console.log('Calculated routes:', this.calculatedRoutes);
       console.log('Has fastest route:', !!this.calculatedRoutes?.fastest);
-      console.log('Fastest path coords:', this.calculatedRoutes?.fastest?.path_coordinates);
+      console.log('Fastest path coords:', this.calculatedRoutes?.fastest?.path_coordinates?.length);
       console.log('Has greenest route:', !!this.calculatedRoutes?.greenest);
       console.log('Show alternative:', this.calculatedRoutes?.show_alternative);
       console.log('Selected route type:', this.selectedRouteType);
@@ -588,6 +651,29 @@ export default {
         console.log('Map zoom:', this.map.getZoom());
         console.log('Map bounds:', this.map.getBounds());
       }
+      console.log('==================\n');
+    },
+
+    // Slider Methods
+    handleSliderChange() {
+      // Update the main value
+      this.maxTimeVariance = this.localTimeVariance;
+
+      console.log('🎚️ Time variance changed to:', this.maxTimeVariance + '%');
+
+      // Recalculate routes if we have a destination
+      if (this.destination) {
+        this.debouncedRecalculateRoutes();
+      }
+    },
+
+    debouncedRecalculateRoutes() {
+      // Debounce route recalculations to avoid too many API calls
+      clearTimeout(this.recalcTimer);
+      this.recalcTimer = setTimeout(() => {
+        console.log('♻️ Recalculating routes with new time variance...');
+        this.calculateRoutes();
+      }, 800);
     }
   }
 };
@@ -845,5 +931,115 @@ export default {
 
 .debug-button:hover {
   background: #ff5252;
+}
+
+/* Time Variance Slider Styles */
+.time-variance-control {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  border: 2px solid #e9ecef;
+}
+
+.slider-header {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.slider-label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 1rem;
+}
+
+.slider-container {
+  margin-bottom: 12px;
+}
+
+.time-slider {
+  width: 100%;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(to right, #ffffff 0%, #a8e6a1 25%, #66bb6a 50%, #43a047 75%, #2e7d32 100%);
+  outline: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.time-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid #2e7d32;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+}
+
+.time-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  border-color: #1b5e20;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+}
+
+.time-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid #2e7d32;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+}
+
+.time-slider::-moz-range-thumb:hover {
+  transform: scale(1.15);
+  border-color: #1b5e20;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+}
+
+.slider-marks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 0 4px;
+}
+
+.mark {
+  font-size: 0.75rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .time-variance-control {
+    padding: 16px;
+  }
+
+  .slider-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .slider-value {
+    align-self: flex-end;
+  }
+
+  .trip-stats {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .controls-section {
+    flex-direction: column;
+  }
 }
 </style>
