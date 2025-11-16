@@ -159,6 +159,35 @@
       </div>
     </div>
 
+    <div v-if="showPredictionPopup" class="prediction-popup-overlay">
+      <div class="prediction-popup">
+        <div class="popup-header">
+          <span class="ai-icon">🤖</span>
+          <h3>Transport Mode Detected</h3>
+        </div>
+
+        <div class="popup-content">
+          <p>Our AI detected you're using:</p>
+          <div class="prediction-details">
+            <span class="predicted-mode">{{ currentPrediction.mode }}</span>
+            <span class="confidence">({{ (currentPrediction.confidence * 100).toFixed(1) }}% confident)</span>
+          </div>
+          <p class="comparison">
+            You selected: <strong>{{ selectedTransportMode }}</strong>
+          </p>
+        </div>
+
+        <div class="popup-actions">
+          <button @click="confirmPrediction" class="confirm-btn">
+            ✅ Switch to {{ currentPrediction.mode }}
+          </button>
+          <button @click="rejectPrediction" class="reject-btn">
+            ❌ Keep {{ selectedTransportMode }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Debug Button (remove in production) -->
     <button
       @click="debugMap"
@@ -205,6 +234,10 @@ export default {
     loading: {
       type: Boolean,
       default: false
+    },
+    aiPrediction: {
+      type: Object,
+      default: null
     }
   },
 
@@ -226,6 +259,8 @@ export default {
       calculating: false,
       recalcTimer: null,
       currentLocationMarker: null,
+      showPredictionPopup: false,
+      currentPrediction: null,
 
       // Time Variance Slider
       maxTimeVariance: 20, // default value
@@ -311,7 +346,20 @@ export default {
         }
       },
       deep: true
-    }
+    },
+
+    aiPrediction: {
+      handler(newPrediction) {
+        console.log('👀 LiveTrackingUI watcher - aiPrediction changed:', newPrediction);
+        if (newPrediction && newPrediction.mode !== this.selectedTransportMode && newPrediction.confidence > 0.7) {
+          console.log('🎯 Conditions met - showing popup!');
+          this.showPredictionPopup = true;
+          this.currentPrediction = newPrediction;
+        }
+      },
+      immediate: true,
+      deep: true
+    },
   },
 
   mounted() {
@@ -729,6 +777,34 @@ export default {
       } else if (type === 'warning') {
         console.warn('⚠️ ' + text);
       }
+    },
+
+    handleAIPrediction(prediction) {
+      console.log('🤖 AI Prediction received in LiveTrackingUI:', prediction);
+      this.aiPrediction = prediction;
+
+      // Show popup if confidence threshold is met and mode differs
+      if (prediction.mode !== this.selectedTransportMode && prediction.confidence > 0.7) {
+        console.log('🎯 Showing prediction popup!');
+        this.showPredictionPopup = true;
+        this.currentPrediction = prediction;
+      }
+    },
+    // Also add these if you don't have them:
+    confirmPrediction() {
+      console.log(`🔄 User confirmed mode change to: ${this.currentPrediction.mode}`);
+      this.selectedTransportMode = this.currentPrediction.mode;
+      this.closePredictionPopup();
+    },
+
+    rejectPrediction() {
+      console.log('❌ User rejected AI prediction');
+      this.closePredictionPopup();
+    },
+
+    closePredictionPopup() {
+      this.showPredictionPopup = false;
+      this.currentPrediction = null;
     },
   }
 };
@@ -1162,6 +1238,72 @@ export default {
   font-size: 0.9em;
   color: #6c757d;
   padding-left: 62px;
+}
+
+.prediction-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.prediction-popup {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.prediction-details {
+  margin: 16px 0;
+  text-align: center;
+}
+
+.predicted-mode {
+  font-size: 24px;
+  font-weight: bold;
+  color: #4285F4;
+  text-transform: capitalize;
+}
+
+.popup-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.confirm-btn, .reject-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.confirm-btn {
+  background: #34A853;
+  color: white;
+}
+
+.reject-btn {
+  background: #EA4335;
+  color: white;
 }
 
 </style>

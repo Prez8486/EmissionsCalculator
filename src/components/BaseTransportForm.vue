@@ -15,6 +15,7 @@
       :is-active="tripState.isActive"
       :distance="tripState.data.distance || 0"
       :loading="tripState.loading"
+      :ai-prediction="aiPrediction"
       @start-trip="startTrip"
       @end-trip="endTrip"
     />
@@ -51,37 +52,6 @@
         </div>
       </div>
     </div>
-
-    <!-- AI Prediction Confirmation Popup -->
-    <div v-if="showPredictionPopup" class="prediction-popup-overlay">
-      <div class="prediction-popup">
-        <div class="popup-header">
-          <span class="ai-icon">🤖</span>
-          <h3>Transport Mode Detected</h3>
-        </div>
-
-        <div class="popup-content">
-          <p>Our AI detected you're using:</p>
-          <div class="prediction-details">
-            <span class="predicted-mode">{{ currentPrediction.mode }}</span>
-            <span class="confidence">({{ (currentPrediction.confidence * 100).toFixed(1) }}% confident)</span>
-          </div>
-          <p class="comparison">
-            You selected: <strong>{{ selectedTransportMode }}</strong>
-          </p>
-        </div>
-
-        <div class="popup-actions">
-          <button @click="confirmPrediction" class="confirm-btn">
-            ✅ Switch to {{ currentPrediction.mode }}
-          </button>
-          <button @click="rejectPrediction" class="reject-btn">
-            ❌ Keep {{ selectedTransportMode }}
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- Emissions Results (Both Modes) -->
     <!--<EmissionsSummary
       v-if="tripState.emission"
@@ -581,29 +551,29 @@ export default {
     }, */
 
     handlePredictionReceived(prediction) {
-      console.log('AI Prediction received:', prediction);
+      console.log('🎯 AI Prediction received in BaseTransportForm:', prediction);
+      console.log('🎯 Current transport mode:', this.transportMode);
+      console.log('🎯 Mismatch?', prediction.mode !== this.transportMode);
+      console.log('🎯 Confidence:', prediction.confidence);
+
       this.aiPrediction = prediction;
 
-      // TEMPORARY TEST: Force a mismatch to test popup
-      const testPrediction = {
-        ...prediction,
-        mode: 'walk', // Force different mode
-        confidence: 0.85 // High confidence
-      };
+      // Check for mismatch
+      this.predictionMismatch = prediction.mode !== this.transportMode && prediction.confidence > 0.7;
 
-      this.predictionMismatch = testPrediction.mode !== this.transportMode && testPrediction.confidence > 0.7;
+      console.log('🎯 Should show popup?', this.predictionMismatch);
 
       if (this.predictionMismatch) {
+        console.log('🎯 Setting current prediction for popup:', prediction);
+
+        // Set the current prediction to trigger the popup
+        this.currentPrediction = prediction;
+        this.showPredictionPopup = true;
+
         this.showMessage(
-          `AI detected ${testPrediction.mode} transport (${(testPrediction.confidence * 100).toFixed(1)}% confident). You selected ${this.transportMode}. Is this correct?`,
+          `AI detected ${prediction.mode} transport (${(prediction.confidence * 100).toFixed(1)}% confident). You selected ${this.transportMode}. Is this correct?`,
           'warning'
         );
-
-        // EMIT THE TEST PREDICTION
-        this.$emit('prediction-received', testPrediction);
-      } else {
-        // EMIT REAL PREDICTION
-        this.$emit('prediction-received', prediction);
       }
     },
 
@@ -666,32 +636,6 @@ export default {
         flight: '✈️'
       };
       return icons[mode] || '🚶';
-    },
-
-    //Handle AI Methods
-    confirmPrediction() {
-      console.log(`🔄 User confirmed mode change to: ${this.currentPrediction.mode}`);
-      this.selectedTransportMode = this.currentPrediction.mode;
-
-      // Update the trip if needed
-      if (this.trip) {
-        this.trip.transportMode = this.currentPrediction.mode;
-      }
-
-      // Emit to parent if needed
-      this.$emit('transport-mode-changed', this.currentPrediction.mode);
-
-      this.closePredictionPopup();
-    },
-
-    rejectPrediction() {
-      console.log('❌ User rejected AI prediction');
-      this.closePredictionPopup();
-    },
-
-    closePredictionPopup() {
-      this.showPredictionPopup = false;
-      this.currentPrediction = null;
     },
   }
 };
