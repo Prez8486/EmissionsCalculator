@@ -52,6 +52,36 @@
       </div>
     </div>
 
+    <!-- AI Prediction Confirmation Popup -->
+    <div v-if="showPredictionPopup" class="prediction-popup-overlay">
+      <div class="prediction-popup">
+        <div class="popup-header">
+          <span class="ai-icon">🤖</span>
+          <h3>Transport Mode Detected</h3>
+        </div>
+
+        <div class="popup-content">
+          <p>Our AI detected you're using:</p>
+          <div class="prediction-details">
+            <span class="predicted-mode">{{ currentPrediction.mode }}</span>
+            <span class="confidence">({{ (currentPrediction.confidence * 100).toFixed(1) }}% confident)</span>
+          </div>
+          <p class="comparison">
+            You selected: <strong>{{ selectedTransportMode }}</strong>
+          </p>
+        </div>
+
+        <div class="popup-actions">
+          <button @click="confirmPrediction" class="confirm-btn">
+            ✅ Switch to {{ currentPrediction.mode }}
+          </button>
+          <button @click="rejectPrediction" class="reject-btn">
+            ❌ Keep {{ selectedTransportMode }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Emissions Results (Both Modes) -->
     <!--<EmissionsSummary
       v-if="tripState.emission"
@@ -136,6 +166,8 @@ export default {
       showTripSummary: false,
       tripSummaryData: null,
       predictionMismatch: false,
+      showPredictionPopup: false,
+      currentPrediction: null,
 
       // Track trip timing
       tripStartTime: null,
@@ -530,7 +562,7 @@ export default {
       console.log('Distance update:', distance);
     },
 
-    handlePredictionReceived(prediction) {
+    /*handlePredictionReceived(prediction) {
       console.log('AI Prediction received:', prediction);
       this.aiPrediction = prediction;
 
@@ -542,6 +574,36 @@ export default {
           `AI detected ${prediction.mode} transport (${(prediction.confidence * 100).toFixed(1)}% confident). You selected ${this.transportMode}. Is this correct?`,
           'warning'
         );
+      }
+
+      // EMIT TO PARENT COMPONENT (LiveTrackingUI.vue)
+      this.$emit('prediction-received', prediction);
+    }, */
+
+    handlePredictionReceived(prediction) {
+      console.log('AI Prediction received:', prediction);
+      this.aiPrediction = prediction;
+
+      // TEMPORARY TEST: Force a mismatch to test popup
+      const testPrediction = {
+        ...prediction,
+        mode: 'walk', // Force different mode
+        confidence: 0.85 // High confidence
+      };
+
+      this.predictionMismatch = testPrediction.mode !== this.transportMode && testPrediction.confidence > 0.7;
+
+      if (this.predictionMismatch) {
+        this.showMessage(
+          `AI detected ${testPrediction.mode} transport (${(testPrediction.confidence * 100).toFixed(1)}% confident). You selected ${this.transportMode}. Is this correct?`,
+          'warning'
+        );
+
+        // EMIT THE TEST PREDICTION
+        this.$emit('prediction-received', testPrediction);
+      } else {
+        // EMIT REAL PREDICTION
+        this.$emit('prediction-received', prediction);
       }
     },
 
@@ -604,7 +666,33 @@ export default {
         flight: '✈️'
       };
       return icons[mode] || '🚶';
-    }
+    },
+
+    //Handle AI Methods
+    confirmPrediction() {
+      console.log(`🔄 User confirmed mode change to: ${this.currentPrediction.mode}`);
+      this.selectedTransportMode = this.currentPrediction.mode;
+
+      // Update the trip if needed
+      if (this.trip) {
+        this.trip.transportMode = this.currentPrediction.mode;
+      }
+
+      // Emit to parent if needed
+      this.$emit('transport-mode-changed', this.currentPrediction.mode);
+
+      this.closePredictionPopup();
+    },
+
+    rejectPrediction() {
+      console.log('❌ User rejected AI prediction');
+      this.closePredictionPopup();
+    },
+
+    closePredictionPopup() {
+      this.showPredictionPopup = false;
+      this.currentPrediction = null;
+    },
   }
 };
 </script>
@@ -743,5 +831,111 @@ export default {
   color: #856404;
   font-size: 0.85rem;
   font-style: italic;
+}
+
+.prediction-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.prediction-popup {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  animation: popIn 0.3s ease-out;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ai-icon {
+  font-size: 24px;
+}
+
+.popup-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.prediction-details {
+  margin: 16px 0;
+  text-align: center;
+}
+
+.predicted-mode {
+  font-size: 24px;
+  font-weight: bold;
+  color: #4285F4;
+  text-transform: capitalize;
+}
+
+.confidence {
+  color: #666;
+  font-size: 14px;
+}
+
+.comparison {
+  color: #666;
+  text-align: center;
+}
+
+.popup-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.confirm-btn, .reject-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.confirm-btn {
+  background: #34A853;
+  color: white;
+}
+
+.confirm-btn:hover {
+  background: #2E8B47;
+}
+
+.reject-btn {
+  background: #EA4335;
+  color: white;
+}
+
+.reject-btn:hover {
+  background: #D33426;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 </style>

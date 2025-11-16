@@ -138,6 +138,27 @@
       <span class="status-text">{{ gpsStatusText }}</span>
     </div>
 
+    <!-- AI Toggle Switch -->
+    <div v-if="!isActive" class="ai-toggle-section">
+      <div class="ai-toggle">
+        <label class="toggle-label">
+          <input
+            type="checkbox"
+            v-model="aiEnabled"
+            @change="handleAIToggle"
+            class="toggle-input"
+          />
+          <span class="toggle-slider"></span>
+          <span class="toggle-text">
+            🤖 Enable AI Transport Detection
+          </span>
+        </label>
+        <div v-if="aiEnabled" class="ai-description">
+          AI will analyze sensor data to automatically detect your transport mode
+        </div>
+      </div>
+    </div>
+
     <!-- Debug Button (remove in production) -->
     <button
       @click="debugMap"
@@ -208,7 +229,10 @@ export default {
 
       // Time Variance Slider
       maxTimeVariance: 20, // default value
-      localTimeVariance: 20 // local copy for slider
+      localTimeVariance: 20, // local copy for slider
+
+      //AI Toggle State
+      aiEnabled: false
     };
   },
 
@@ -448,6 +472,11 @@ export default {
         console.log('✅ Route set for trip:', this.selectedRouteType);
       }
 
+       // Set AI mode before starting trip
+      if (this.trip) {
+        this.trip.setAIMode(this.aiEnabled);
+      }
+
       this.tripStartTime = Date.now();
       this.$emit('start-trip');
     },
@@ -674,7 +703,33 @@ export default {
         console.log('♻️ Recalculating routes with new time variance...');
         this.calculateRoutes();
       }, 800);
-    }
+    },
+
+    //AI Toggle Methods
+    handleAIToggle() {
+      console.log('🤖 AI Mode:', this.aiEnabled ? 'ENABLED' : 'DISABLED');
+
+      if (this.aiEnabled) {
+        this.showMessage('AI transport detection enabled. Starting sensor collection when trip begins.', 'info');
+      } else {
+        this.showMessage('AI transport detection disabled.', 'info');
+      }
+
+      // Pass AI state to trip instance
+      if (this.trip) {
+        this.trip.setAIMode(this.aiEnabled);
+      }
+    },
+
+    // Helper method for messages (add this if you don't have it)
+    showMessage(text, type = 'info') {
+      // You can use alert for now, or implement a proper toast notification
+      if (type === 'info') {
+        console.log('💡 ' + text);
+      } else if (type === 'warning') {
+        console.warn('⚠️ ' + text);
+      }
+    },
   }
 };
 </script>
@@ -1042,4 +1097,71 @@ export default {
     flex-direction: column;
   }
 }
+
+.ai-toggle-section {
+  margin: 15px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.ai-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.toggle-input {
+  display: none;
+}
+
+.toggle-slider {
+  width: 50px;
+  height: 24px;
+  background: #ccc;
+  border-radius: 24px;
+  position: relative;
+  transition: background 0.3s;
+}
+
+.toggle-slider:before {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s;
+}
+
+.toggle-input:checked + .toggle-slider {
+  background: #4CAF50;
+}
+
+.toggle-input:checked + .toggle-slider:before {
+  transform: translateX(26px);
+}
+
+.toggle-text {
+  font-size: 1em;
+}
+
+.ai-description {
+  font-size: 0.9em;
+  color: #6c757d;
+  padding-left: 62px;
+}
+
 </style>
