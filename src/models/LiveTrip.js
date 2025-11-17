@@ -20,6 +20,7 @@ export class LiveTrip extends BaseTrip {
     this.lastPrediction = null;
     this.lastMotionData = null;
     this.lastOrientationData = null;
+    this.onPredictionReceived = options.onPredictionReceived || (() => {});
 
     //Map Integration
     this.map = options.map || null;
@@ -109,10 +110,11 @@ export class LiveTrip extends BaseTrip {
           }
         );
 
-        // Start sensor collection if we have a tripId
-        if (this.tripId) {
+        // Start sensor collection only if AI is enabled and we have a tripId
+        if (this.aiEnabled && this.tripId) {
           this.startSensorCollection();
         }
+
 
         this.isActive = true;
         this.onStateChange({
@@ -522,7 +524,7 @@ export class LiveTrip extends BaseTrip {
       }
   }
 
- /* async sendSensorBatch(forceSend = false) {
+ async sendSensorBatch(forceSend = false) {
     if (!this.sensorBuffer.length && !forceSend) {
       console.log('⏭️ No sensor data to send');
       return;
@@ -630,7 +632,7 @@ export class LiveTrip extends BaseTrip {
     const clearedSamples = this.sensorBuffer.length;
     this.sensorBuffer = [];
     console.log(`🗑️ Cleared ${clearedSamples} samples from buffer`);
-  }*/
+  }
 
   //Methods for Route Planning
   setDestination(destination) {
@@ -646,5 +648,19 @@ export class LiveTrip extends BaseTrip {
   getPlannedRouteData() {
     if (!this.plannedRoute) return null;
     return this.plannedRoute.getRoute(this.selectedRouteType);
+  }
+
+  //Method for AI Mode Toggle
+  setAIMode(enabled) {
+    console.log('🎯 Setting AI mode:', enabled);
+    this.aiEnabled = enabled;
+
+    if (enabled) {
+      console.log('🤖 AI transport detection enabled - will start sensor collection');
+    } else {
+      console.log('🤖 AI transport detection disabled');
+      // Stop any ongoing sensor collection
+      this.stopSensorCollection();
+    }
   }
 }

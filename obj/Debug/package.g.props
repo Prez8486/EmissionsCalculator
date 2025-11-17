@@ -15,6 +15,7 @@
     <PackageJsonDependenciesCapacitorGeolocation Condition="$(PackageJsonDependenciesCapacitorGeolocation) == ''">^7.1.2</PackageJsonDependenciesCapacitorGeolocation>
     <PackageJsonDependenciesCapacitorPreferences Condition="$(PackageJsonDependenciesCapacitorPreferences) == ''">^7.0.2</PackageJsonDependenciesCapacitorPreferences>
     <PackageJsonDependenciesPopperjsCore Condition="$(PackageJsonDependenciesPopperjsCore) == ''">^2.11.8</PackageJsonDependenciesPopperjsCore>
+    <PackageJsonDependenciesAxios Condition="$(PackageJsonDependenciesAxios) == ''">^1.13.2</PackageJsonDependenciesAxios>
     <PackageJsonDependenciesBootstrap Condition="$(PackageJsonDependenciesBootstrap) == ''">^5.3.6</PackageJsonDependenciesBootstrap>
     <PackageJsonDependenciesChartJs Condition="$(PackageJsonDependenciesChartJs) == ''">^3.9.1</PackageJsonDependenciesChartJs>
     <PackageJsonDependenciesChartjsAdapterDateFns Condition="$(PackageJsonDependenciesChartjsAdapterDateFns) == ''">^3.0.0</PackageJsonDependenciesChartjsAdapterDateFns>
