@@ -188,6 +188,7 @@
 <script>
   import MyCarCard from '@/components/MyCar.vue';
   import { API_BASE } from '@/config/apiConfig.js';
+  import import corolla from '@/assets/toyota-corolla.jpg'
   export default {
     async mounted() {
       console.log('Component mounted');
@@ -234,13 +235,13 @@
           name: "Tesla Model 3", 
           baseEmissions: 0,
           manufacturingEmissions: 10000,
-          image: new URL('/assets/tesla-model3.jpg', import.meta.url).href
+          image: new URL('@/assets/tesla-model3.jpg', import.meta.url).href
         },
         { 
           name: "Toyota Corolla Hybrid", 
           baseEmissions: 95,
           manufacturingEmissions: 6500,
-          image: '/src/assets/toyota-corolla.jpg'
+          image: corolla
         },
         { 
           name: "Nissan Leaf", 
