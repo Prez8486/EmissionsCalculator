@@ -51,7 +51,7 @@
               {{ car ? 'Calculating comparison...' : 'Please set up your car first' }}
             </p>
             
-            <p v-else class="loading-emissions">Loading comparison...</p>
+            <!--<p v-else class="loading-emissions">Loading comparison...</p>-->
           </div>
 
           <!-- Custom car option -->
