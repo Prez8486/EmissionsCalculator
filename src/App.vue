@@ -157,6 +157,7 @@ import { Capacitor } from '@capacitor/core';
       this.darkMode = localStorage.getItem('darkMode') === 'true';
       if (this.darkMode) {
         document.body.classList.add('dark');
+
       }
     },
     mounted() {

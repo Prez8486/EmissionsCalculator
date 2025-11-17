@@ -234,7 +234,7 @@
           name: "Tesla Model 3", 
           baseEmissions: 0,
           manufacturingEmissions: 10000,
-          image: '/src/assets/tesla-model3.jpg'
+          image: new URL('@assets/assets/tesla-model3.jpg', import.meta.url).href
         },
         { 
           name: "Toyota Corolla Hybrid", 
