@@ -186,4 +186,56 @@
     padding: 20px;
     text-align: center;
   }
+  /* --------------------------- */
+  /* 📱 MOBILE ONLY STYLING     */
+  /* --------------------------- */
+  @media (max-width: 600px) {
+
+    /* Reduce container width & padding */
+    .dashboard-container {
+      padding: 10px;
+      margin-top: 1rem;
+    }
+
+    /* Make title smaller */
+    .dashboard-title {
+      font-size: 1.4rem;
+      margin-bottom: 1.2rem;
+    }
+
+    /* Make cards full-width stacked vertically */
+    .dashboard-card {
+      padding: 12px;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+
+    .row.g-2 > div {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+
+    /* Card title and value sizes */
+    .card-title {
+      font-size: 0.9rem;
+    }
+
+    .card-text {
+      font-size: 1.3rem;
+    }
+
+    /* Last Trip card improvements */
+    .last-trip h2 {
+      font-size: 1.2rem;
+    }
+
+    .last-trip-card {
+      padding: 12px;
+    }
+
+    /* MyCarCard container spacing */
+    .home-container {
+      padding: 10px 0;
+    }
+  }
 </style>

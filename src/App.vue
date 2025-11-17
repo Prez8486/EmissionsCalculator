@@ -56,7 +56,7 @@
       </router-link>
 
       <!-- Center Add Trip Button -->
-      <router-link to="/base-form" class="nav-item center-button" active-class="active">
+      <router-link to="/select-mode" class="nav-item center-button" active-class="active">
         <div class="center-icon">+</div>
       </router-link>
 
@@ -134,7 +134,13 @@ import { Capacitor } from '@capacitor/core';
         this.$router.push('/login');
       },
       checkPlatform() {
-        this.isAndroid = Capacitor.isNativePlatform();
+       /* const ua = navigator.userAgent.toLowerCase();*/
+
+
+        this.isAndroid = window.innerWidth <= 768;
+         /* Capacitor.isNativePlatform() || /android/i.test(ua) ||               // Android phone/tablet
+          /iphone|ipad|ipod/i.test(ua) ||      // iOS devices
+          /mobile/i.test(ua);*/
       },
       toggleDarkMode() {
         this.darkMode = !this.darkMode;
@@ -147,7 +153,7 @@ import { Capacitor } from '@capacitor/core';
     },
     created() {
       this.checkAuth();
-      //this.checkPlatform();
+      this.checkPlatform();
       this.darkMode = localStorage.getItem('darkMode') === 'true';
       if (this.darkMode) {
         document.body.classList.add('dark');
@@ -155,11 +161,13 @@ import { Capacitor } from '@capacitor/core';
     },
     mounted() {
       console.log("Vue App mounted");
-      this.isAndroid = /Android/i.test(navigator.userAgent);
+      //this.isAndroid = /Android/i.test(navigator.userAgent);
+     
     },
     watch: {
       '$route'() {
         this.checkAuth();
+       
         this.showSettings = false;
       }
     }
