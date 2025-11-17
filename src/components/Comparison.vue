@@ -5,11 +5,11 @@
     <MyCarCard />
 
     <!-- Debug info (remove after fixing) -->
-    <div class="debug-info" style="background: #fef3c7; padding: 10px; margin: 10px; border-radius: 8px;">
+    <!--<div class="debug-info" style="background: #fef3c7; padding: 10px; margin: 10px; border-radius: 8px;">
       <p><strong>Debug:</strong></p>
       <p>userCar: {{ userCar ? `${userCar.make} ${userCar.model}` : 'null' }}</p>
       <p>User Car Emissions: {{ userCarEmissions }}</p>
-    </div>
+    </div>-->
 
     <!-- Change Car Section -->
     <section class="change-car">
