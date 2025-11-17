@@ -188,7 +188,7 @@
 <script>
   import MyCarCard from '@/components/MyCar.vue';
   import { API_BASE } from '@/config/apiConfig.js';
-  import import corolla from '@/assets/toyota-corolla.jpg'
+  import corolla from '@/assets/toyota-corolla.jpg'
   export default {
     async mounted() {
       console.log('Component mounted');
