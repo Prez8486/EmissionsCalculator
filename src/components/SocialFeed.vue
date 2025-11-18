@@ -142,4 +142,10 @@ export default {
     border-radius: 6px;
     cursor: pointer;
   }
+  body.dark p {
+    color: black !important;
+  }
+  body.dark .post-header {
+    color: black !important;
+  }
 </style>

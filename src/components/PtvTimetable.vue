@@ -301,4 +301,7 @@
     border-radius: 8px;
     border: 1px solid #ddd;
   }
+  body.dark li {
+    color: black !important;
+  }
 </style>

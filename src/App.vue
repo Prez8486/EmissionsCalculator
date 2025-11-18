@@ -109,10 +109,10 @@
             <span class="option-icon">🔑</span>
             <span>Change Password</span>
           </button>
-          <button class="settings-option" disabled>
+          <!--<button class="settings-option" disabled>
             <span class="option-icon">📍</span>
             <span>Location Settings (Coming Soon)</span>
-          </button>
+          </button>-->
         </div>
       </div>
     </div>
@@ -497,6 +497,7 @@ import { Capacitor } from '@capacitor/core';
     margin: 1rem;
   }
 
+
   /* Responsive adjustments */
   @media (max-width: 480px) {
     .nav-label {
@@ -541,7 +542,7 @@ import { Capacitor } from '@capacitor/core';
 
     body.dark .settings-modal {
       background: #1f2937;
-      color: #f9fafb;
+      color: white;
     }
 
     body.dark .settings-option:hover:not(:disabled) {
@@ -662,5 +663,11 @@ import { Capacitor } from '@capacitor/core';
     color: #fff;
     border-radius: 10px;
     border: none;
+  }
+  body.dark .settings-header {
+    color: white !important;
+  }
+  body.dark .settings-content {
+    color: white !important;
   }
   </style>

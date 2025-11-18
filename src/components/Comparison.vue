@@ -588,4 +588,7 @@
       max-width: calc(100% - 1rem);
     }
   }
+  body.dark h2 {
+    color: #ffffff !important;
+  }
 </style>
