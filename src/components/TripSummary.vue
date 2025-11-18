@@ -725,4 +725,30 @@ export default {
     height: 250px;
   }
 }
+  .share-btn {
+    width: 90%;
+    margin: 20px auto 0 auto;
+    display: block;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    padding: 14px 20px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-align: center;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.25);
+    transition: all 0.25s ease;
+  }
+
+    .share-btn:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, #0056b3, #004494);
+      box-shadow: 0 6px 14px rgba(0, 123, 255, 0.35);
+    }
+
+    .share-btn:active {
+      transform: scale(0.97);
+    }
 </style>
