@@ -142,7 +142,7 @@
           ✅ Trip automatically saved to your history!
         </div>
       </div>
-
+      <button class="share-btn" @click="shareToFeed">Share to Feed</button>
       <div class="modal-footer">
         <button class="close-btn" @click="handleClose">
           {{ tripData.autoSaved ? 'Close & Continue' : 'Close' }}
@@ -183,6 +183,31 @@ export default {
 
     hasGreenAlternative() {
       return this.analysis?.has_green_alternative || false;
+    },
+    async shareToFeed() {
+      const token = localStorage.getItem("token");
+
+      const body = {
+        mode: this.trip.transportMode,
+        distanceKm: this.trip.distanceKm,
+        emissionKg: this.trip.emissionKg,
+        image: null  // you can add image later
+      };
+
+      const res = await fetch(`${API_BASE}/feed/share-trip`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert("Trip shared successfully!");
+        this.$router.push("/feed");
+      }
     },
 
     individualImpact() {
