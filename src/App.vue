@@ -14,10 +14,8 @@
         <router-link to="/friendspage">Friends Page</router-link>
         <router-link to="/feed">Social Feed</router-link>
         <button @click="showSettings = true" class="settings-btn">Settings</button>
-        <router-link
-          :to="isAndroid ? '/livetracking' : '/select-mode'"
-          class="website-addtrip"
-        > + </router-link>
+        <router-link :to="isAndroid ? '/livetracking' : '/select-mode'"
+                     class="website-addtrip"> + </router-link>
         <!-- <router-link to="/base-form" class="website-plus-button">-</router-link> -->
       </nav>
     </header>
@@ -75,8 +73,22 @@
         <div class="nav-icon">🏆</div>
         <span class="nav-label">Testing Modes</span>
       </router-link>
+      <button class="nav-item" @click="showMore = true">
+        <div class="nav-icon">☰</div>
+        <span class="nav-label">More</span>
+      </button>
     </nav>
+    <div v-if="showMore" class="more-menu-overlay" @click="showMore = false">
+      <div class="more-menu" @click.stop>
 
+        <button class="more-item" @click="$router.push('/timetable')">🚌 PTV Timetable</button>
+        <button class="more-item" @click="$router.push('/friendspage')">👥 Friends</button>
+        <button class="more-item" @click="$router.push('/info')">ℹ Info Page</button>
+        <button class="more-item" @click="$router.push('/feed')">🌐 Social Feed</button>
+
+        <button class="close-more" @click="showMore = false">Close</button>
+      </div>
+    </div>
     <!-- Settings Modal/Overlay -->
     <div v-if="showSettings" class="settings-overlay" @click="showSettings = false">
       <div class="settings-modal" @click.stop>
@@ -121,7 +133,8 @@ import { Capacitor } from '@capacitor/core';
         isLoggedIn: false,
         isAndroid: false,
         showSettings: false,
-        darkMode: false
+        darkMode: false,
+        showMore: false
       };
     },
     methods: {
@@ -609,5 +622,45 @@ import { Capacitor } from '@capacitor/core';
   }
   .logout-btn:hover {
     background-color: #fef2f2;
+  }
+  .more-menu-overlay {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    z-index: 9999;
+  }
+
+  .more-menu {
+    background: #ffffff;
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    padding: 1rem;
+    animation: slide-up 0.3s ease-out;
+  }
+
+  .more-item {
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    border: none;
+    background: #f3f4f6;
+    font-size: 1rem;
+    text-align: left;
+  }
+
+  .close-more {
+    width: 100%;
+    padding: 14px;
+    background: #007bff;
+    color: #fff;
+    border-radius: 10px;
+    border: none;
   }
   </style>

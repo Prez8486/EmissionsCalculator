@@ -153,6 +153,7 @@
 </template>
 
 <script>
+import { API_BASE } from '@/config/apiConfig';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -184,31 +185,7 @@ export default {
     hasGreenAlternative() {
       return this.analysis?.has_green_alternative || false;
     },
-    async shareToFeed() {
-      const token = localStorage.getItem("token");
-
-      const body = {
-        mode: this.trip.transportMode,
-        distanceKm: this.trip.distanceKm,
-        emissionKg: this.trip.emissionKg,
-        image: null  // you can add image later
-      };
-
-      const res = await fetch(`${API_BASE}/feed/share-trip`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(body)
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        alert("Trip shared successfully!");
-        this.$router.push("/feed");
-      }
-    },
+    
 
     individualImpact() {
       return this.analysis?.environmental_impact?.individual || {
@@ -327,6 +304,37 @@ export default {
 
       } catch (error) {
         console.error('Failed to initialize map:', error);
+      }
+    },
+    async shareToFeed() {
+      const token = localStorage.getItem("token");
+
+      const body = {
+        transportMode: this.tripData.transportMode,
+        distance: this.tripData.distance,
+        emission: this.tripData.emission
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/feed/share-trip`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          alert("Trip shared successfully!");
+          this.$router.push("/feed");
+        } else {
+          console.error("Share failed:", data);
+        }
+      } catch (err) {
+        console.error("Error sharing trip:", err);
       }
     },
 
