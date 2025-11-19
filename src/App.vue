@@ -64,15 +64,15 @@
         <span class="nav-label">Leaderboard</span>
       </router-link>
 
-      <router-link to="/comparison" class="nav-item" active-class="active">
+      <!--<router-link to="/comparison" class="nav-item" active-class="active">
         <div class="nav-icon">⚖️</div>
         <span class="nav-label">Comparison</span>
-      </router-link>
+      </router-link>-->
 
-      <router-link to="/base-form" class="nav-item" active-class="active">
+      <!--<router-link to="/base-form" class="nav-item" active-class="active">
         <div class="nav-icon">🏆</div>
         <span class="nav-label">Testing Modes</span>
-      </router-link>
+      </router-link>-->
       <button class="nav-item" @click="showMore = true">
         <div class="nav-icon">☰</div>
         <span class="nav-label">More</span>
@@ -80,7 +80,8 @@
     </nav>
     <div v-if="showMore" class="more-menu-overlay" @click="showMore = false">
       <div class="more-menu" @click.stop>
-
+        <button class="more-item" @click="$router.push('/comparison')">⚖️ Comparison</button>
+        <button class="more-item" @click="$router.push('/base-form')">🏆 Testing Modes</button>
         <button class="more-item" @click="$router.push('/timetable')">🚌 PTV Timetable</button>
         <button class="more-item" @click="$router.push('/friendspage')">👥 Friends</button>
         <button class="more-item" @click="$router.push('/info')">ℹ Info Page</button>
